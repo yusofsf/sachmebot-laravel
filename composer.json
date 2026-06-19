@@ -1,0 +1,39 @@
+{
+    "name": "sachme/silver-bot",
+    "type": "project",
+    "description": "Telegram silver-price bot (port of the Python/Flask bot to Laravel).",
+    "keywords": ["laravel", "telegram", "silver", "bot"],
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^11.0",
+        "guzzlehttp/guzzle": "^7.8",
+        "morilog/jalali": "^3.4"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.13",
+        "laravel/tinker": "^2.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
