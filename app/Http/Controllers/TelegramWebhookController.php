@@ -13,12 +13,30 @@ use Morilog\Jalali\Jalalian;
 
 class TelegramWebhookController extends Controller
 {
-    /** callbackهایی که ادمین حتی وقتی ربات خاموش است می‌تواند بزند */
+    // ---------- متن دکمه‌های منوی اصلی (Reply Keyboard) ----------
+    const BTN_PRICE = '💰 تعیین قیمت نقره';
+
+    const BTN_PRICE_995 = '💰 تعیین قیمت نقره 995';
+
+    const BTN_PERCENT = '📉 درصد قیمت خرید';
+
+    const BTN_BAR_999 = '🥇 9شمش 99/9';
+
+    const BTN_BAR_NADIR = '🥈 شمش نادیر';
+
+    const BTN_BOT_ON = '🟢 روشن کردن ربات';
+
+    const BTN_BOT_OFF = '🔴 خاموش کردن ربات';
+
+    /** متن دکمه‌های منو که ادمین حتی وقتی ربات خاموش است باید بتواند بزند */
+    protected array $adminAllowedTexts = [
+        self::BTN_BOT_ON, self::BTN_BOT_OFF,
+    ];
+
+    /** callbackهایی که ادمین حتی وقتی ربات خاموش است می‌تواند بزند (زیرمنوی شمش) */
     protected array $adminAllowed = [
-        'bot_on', 'bot_off', 'set_price', 'set_buy_percent',
-        'bar_999_menu', 'bar_nadir_menu', 'bar_999_unavailable',
-        'bar_999_set_price', 'bar_nadir_unavailable', 'bar_nadir_set_price',
-        'set_price_995',
+        'bar_999_unavailable', 'bar_999_set_price',
+        'bar_nadir_unavailable', 'bar_nadir_set_price',
     ];
 
     public function home()
@@ -59,7 +77,11 @@ class TelegramWebhookController extends Controller
 
             // اجازه‌ی ویژه به ادمین حتی وقتی ربات خاموش است
             if (in_array($userId, $admins, true)) {
-                if ($text === '/start' || in_array($callbackData, $this->adminAllowed, true)) {
+                if (
+                    $text === '/start'
+                    || in_array($text, $this->adminAllowedTexts, true)
+                    || in_array($callbackData, $this->adminAllowed, true)
+                ) {
                     $this->processUpdate($update, $tg);
 
                     return response('ok', 200);
@@ -104,17 +126,25 @@ class TelegramWebhookController extends Controller
     {
         $welcome = "سلام 👋\n\nبه ربات قیمت نقره خوش آمدید 🥈\nیکی از گزینه‌های زیر را انتخاب کنید:";
 
-        $keyboard = ['inline_keyboard' => [
-            [['text' => '💰 تعیین قیمت نقره', 'callback_data' => 'set_price']],
-            [['text' => '💰 تعیین قیمت نقره 995', 'callback_data' => 'set_price_995']],
-            [['text' => '📉 درصد قیمت خرید', 'callback_data' => 'set_buy_percent']],
-            [['text' => '🥇 9شمش 99/9', 'callback_data' => 'bar_999_menu']],
-            [['text' => '🥈 شمش نادیر', 'callback_data' => 'bar_nadir_menu']],
-            [['text' => '🟢 روشن کردن ربات', 'callback_data' => 'bot_on']],
-            [['text' => '🔴 خاموش کردن ربات', 'callback_data' => 'bot_off']],
-        ]];
+        $tg->sendMessage($message['chat']['id'], $welcome, $this->mainKeyboard());
+    }
 
-        $tg->sendMessage($message['chat']['id'], $welcome, $keyboard);
+    /** کیبورد ثابت پایین صفحه (Reply Keyboard) به‌جای دکمه‌های inline */
+    protected function mainKeyboard(): array
+    {
+        return [
+            'keyboard' => [
+                [['text' => self::BTN_PRICE]],
+                [['text' => self::BTN_PRICE_995]],
+                [['text' => self::BTN_PERCENT]],
+                [['text' => self::BTN_BAR_999]],
+                [['text' => self::BTN_BAR_NADIR]],
+                [['text' => self::BTN_BOT_ON]],
+                [['text' => self::BTN_BOT_OFF]],
+            ],
+            'resize_keyboard' => true,
+            'is_persistent' => true,
+        ];
     }
 
     // ---------- callback دکمه‌ها ----------
@@ -132,83 +162,6 @@ class TelegramWebhookController extends Controller
         $edit = fn (string $t, ?array $kb = null) => $tg->editMessageText($chatId, $messageId, $t, $kb);
 
         switch ($data) {
-            case 'set_price':
-                if (! $isAdmin) {
-                    $edit("❌ دسترسی رد شد\nفقط مدیر می‌تواند قیمت تعیین کند.");
-                } elseif (! SilverService::isBotActive()) {
-                    $edit("🔴 ربات خاموش است\nابتدا ربات را روشن کنید.");
-                } else {
-                    $this->setState($userId, 'price');
-                    $edit("✅ لطفاً قیمت گرم نقره را به تومان وارد کنید:\n\nمثال: 7500000");
-                }
-                break;
-
-            case 'set_price_995':
-                if (! $isAdmin) {
-                    $edit('❌ دسترسی رد شد');
-                } elseif (! SilverService::isBotActive()) {
-                    $edit("🔴 ربات خاموش است\nابتدا ربات را روشن کنید.");
-                } else {
-                    $this->setState($userId, 'silver_995');
-                    $edit("⚖️ لطفاً قیمت گرم نقره عیار 99.5 را به تومان وارد کنید:\n\nمثال: 7300000");
-                }
-                break;
-
-            case 'bot_on':
-                if (! $isAdmin) {
-                    $edit("❌ دسترسی رد شد\nفقط مدیر می‌تواند ربات را روشن کند.");
-                } else {
-                    SilverService::setBotActive(true);
-                    $edit('🟢 ربات با موفقیت روشن شد');
-                }
-                break;
-
-            case 'bot_off':
-                if (! $isAdmin) {
-                    $edit("❌ دسترسی رد شد\nفقط مدیر می‌تواند ربات را خاموش کند.");
-                } else {
-                    SilverService::setBotActive(false);
-                    $edit('🔴 ربات با موفقیت خاموش شد');
-                }
-                break;
-
-            case 'set_buy_percent':
-                if (! $isAdmin) {
-                    $edit("❌ دسترسی رد شد\nفقط مدیر می‌تواند قیمت تعیین کند.");
-                } elseif (! SilverService::isBotActive()) {
-                    $edit("🔴 ربات خاموش است\nابتدا ربات را روشن کنید.");
-                } else {
-                    $this->setState($userId, 'percent');
-                    $edit("📉 درصد خرید را وارد کنید\nمثال:\n1 → ×0.99\n1.5 → ×0.985");
-                }
-                break;
-
-            case 'bar_999_menu':
-                if (! $isAdmin) {
-                    $edit('❌ دسترسی رد شد');
-                } elseif (! SilverService::isBotActive()) {
-                    $edit("🔴 ربات خاموش است\nابتدا ربات را روشن کنید.");
-                } else {
-                    $edit('🥇 شمش 999 — یکی را انتخاب کنید:', ['inline_keyboard' => [
-                        [['text' => '❌ عدم موجودی', 'callback_data' => 'bar_999_unavailable']],
-                        [['text' => '💰 تعیین قیمت', 'callback_data' => 'bar_999_set_price']],
-                    ]]);
-                }
-                break;
-
-            case 'bar_nadir_menu':
-                if (! $isAdmin) {
-                    $edit('❌ دسترسی رد شد');
-                } elseif (! SilverService::isBotActive()) {
-                    $edit("🔴 ربات خاموش است\nابتدا ربات را روشن کنید.");
-                } else {
-                    $edit('🥈 شمش نادیر — یکی را انتخاب کنید:', ['inline_keyboard' => [
-                        [['text' => '❌ عدم موجودی', 'callback_data' => 'bar_nadir_unavailable']],
-                        [['text' => '💰 تعیین قیمت', 'callback_data' => 'bar_nadir_set_price']],
-                    ]]);
-                }
-                break;
-
             case 'bar_999_unavailable':
                 if (! $isAdmin) {
                     $edit('❌ دسترسی رد شد');
@@ -257,7 +210,12 @@ class TelegramWebhookController extends Controller
         $isAdmin = in_array($userId, $admins, true);
         $state = $this->getState($userId);
 
-        $reply = fn (string $t) => $tg->sendMessage($chatId, $t, null, 'HTML');
+        $reply = fn (string $t, ?array $kb = null) => $tg->sendMessage($chatId, $t, $kb, 'HTML');
+
+        // فشردن یکی از دکمه‌های منوی ثابت (Reply Keyboard) همیشه اول بررسی می‌شود
+        if ($this->handleMenuButton($text, $userId, $isAdmin, $reply)) {
+            return;
+        }
 
         // درصد خرید
         if ($state === 'percent') {
@@ -371,6 +329,83 @@ class TelegramWebhookController extends Controller
 
         // پیش‌فرض
         $reply('ℹ️ از منوی پایین یکی از گزینه‌ها را انتخاب کنید');
+    }
+
+    /**
+     * بررسی می‌کند آیا متن، یکی از دکمه‌های منوی ثابت است؛ اگر بود همان‌جا پاسخ می‌دهد.
+     * true یعنی پردازش شد و handleText باید همان‌جا برگردد.
+     */
+    protected function handleMenuButton(string $text, $userId, bool $isAdmin, callable $reply): bool
+    {
+        $menuTexts = [
+            self::BTN_PRICE, self::BTN_PRICE_995, self::BTN_PERCENT,
+            self::BTN_BAR_999, self::BTN_BAR_NADIR, self::BTN_BOT_ON, self::BTN_BOT_OFF,
+        ];
+
+        if (! in_array($text, $menuTexts, true)) {
+            return false;
+        }
+
+        $this->clearState($userId);
+
+        if (! $isAdmin) {
+            $reply('❌ دسترسی رد شد');
+
+            return true;
+        }
+
+        if ($text === self::BTN_BOT_ON) {
+            SilverService::setBotActive(true);
+            $reply('🟢 ربات با موفقیت روشن شد');
+
+            return true;
+        }
+
+        if ($text === self::BTN_BOT_OFF) {
+            SilverService::setBotActive(false);
+            $reply('🔴 ربات با موفقیت خاموش شد');
+
+            return true;
+        }
+
+        if (! SilverService::isBotActive()) {
+            $reply("🔴 ربات خاموش است\nابتدا ربات را روشن کنید.");
+
+            return true;
+        }
+
+        switch ($text) {
+            case self::BTN_PRICE:
+                $this->setState($userId, 'price');
+                $reply("✅ لطفاً قیمت گرم نقره را به تومان وارد کنید:\n\nمثال: 7500000");
+                break;
+
+            case self::BTN_PRICE_995:
+                $this->setState($userId, 'silver_995');
+                $reply("⚖️ لطفاً قیمت گرم نقره عیار 99.5 را به تومان وارد کنید:\n\nمثال: 7300000");
+                break;
+
+            case self::BTN_PERCENT:
+                $this->setState($userId, 'percent');
+                $reply("📉 درصد خرید را وارد کنید\nمثال:\n1 → ×0.99\n1.5 → ×0.985");
+                break;
+
+            case self::BTN_BAR_999:
+                $reply('🥇 شمش 999 — یکی را انتخاب کنید:', ['inline_keyboard' => [
+                    [['text' => '❌ عدم موجودی', 'callback_data' => 'bar_999_unavailable']],
+                    [['text' => '💰 تعیین قیمت', 'callback_data' => 'bar_999_set_price']],
+                ]]);
+                break;
+
+            case self::BTN_BAR_NADIR:
+                $reply('🥈 شمش نادیر — یکی را انتخاب کنید:', ['inline_keyboard' => [
+                    [['text' => '❌ عدم موجودی', 'callback_data' => 'bar_nadir_unavailable']],
+                    [['text' => '💰 تعیین قیمت', 'callback_data' => 'bar_nadir_set_price']],
+                ]]);
+                break;
+        }
+
+        return true;
     }
 
     /**
