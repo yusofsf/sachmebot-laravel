@@ -1,0 +1,8 @@
+# فقط زمانی استفاده می‌شود که DocumentRoot به ریشه‌ی پروژه اشاره کند (نه public/).
+# همه‌ی درخواست‌ها را به public/ هدایت می‌کند تا اپ درست کار کند و فایل‌های
+# حساس (‎.env، vendor، …) مستقیم سرو نشوند. اگر DocumentRoot را روی public/ ست
+# کنی، این فایل اصلاً خوانده نمی‌شود (و اشکالی هم ندارد).
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
