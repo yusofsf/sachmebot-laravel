@@ -71,7 +71,7 @@ class FetchPrices extends Command
             return self::SUCCESS;
         }
 
-        $built = MessageBuilder::buildMessage([
+        $data = [
             'mithqal_price' => $r['mithqal_price'],
             'gram_price' => $last->gram_price,
             'mithqal_price_buy' => $r['mithqal_price_buy'],
@@ -89,16 +89,18 @@ class FetchPrices extends Command
             'mithqal_995_price_buy' => $r['mithqal_995_price_buy'],
             'bar_999_price' => $bar999,
             'bar_nadir_price' => $barNadir,
-        ]);
+        ];
+
+        $built = MessageBuilder::buildMessage($data);
 
         (new TelegramClient())->sendMessage(
             config('telegram.channel'), $built['text'], $built['keyboard']
         );
 
         $this->info('✅ قیمت جدید به کانال ارسال شد');
-        BotLog::info('📤 قیمت به کانال ارسال شد', [
-            'mithqal_price' => $r['mithqal_price'],
-            'gram_price' => $last->gram_price,
+        BotLog::info('📤 قیمت به کانال ارسال شد', $data + [
+            'channel' => config('telegram.channel'),
+            'message_text' => $built['text'],
         ]);
 
         return self::SUCCESS;

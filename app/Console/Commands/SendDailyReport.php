@@ -38,7 +38,10 @@ class SendDailyReport extends Command
 
         (new TelegramClient())->sendMessage(config('telegram.channel'), $message);
         $this->info('✅ گزارش روزانه ارسال شد');
-        BotLog::info('📤 گزارش روزانه به کانال ارسال شد');
+        BotLog::info('📤 گزارش روزانه به کانال ارسال شد', [
+            'channel' => config('telegram.channel'),
+            'message_text' => $message,
+        ]);
 
         return self::SUCCESS;
     }
