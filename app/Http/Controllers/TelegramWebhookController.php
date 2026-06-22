@@ -92,6 +92,13 @@ class TelegramWebhookController extends Controller
             if (! SilverService::isBotActive()) {
                 if (isset($update['callback_query'])) {
                     $tg->answerCallbackQuery($update['callback_query']['id'], '🔴 ربات خاموش است', true);
+                } elseif (isset($update['message']['chat']['id']) && in_array($userId, $admins, true)) {
+                    // ادمین یکی از دکمه‌های منو را زده ولی ربات خاموش است → پیام بده تا بی‌صدا نماند
+                    $tg->sendMessage(
+                        $update['message']['chat']['id'],
+                        "🔴 ربات خاموش است\nبرای روشن کردن، دکمه‌ی «🟢 روشن کردن ربات» را بزنید.",
+                        $this->mainKeyboard()
+                    );
                 }
 
                 return response('ok', 200);
