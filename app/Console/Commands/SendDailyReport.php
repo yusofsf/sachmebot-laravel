@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Services\MessageBuilder;
 use App\Services\SilverService;
 use App\Services\TelegramClient;
+use App\Support\BotLog;
 use Illuminate\Console\Command;
 
 /**
@@ -21,6 +22,7 @@ class SendDailyReport extends Command
     {
         if (! SilverService::isBotActive()) {
             $this->info('ربات خاموش است؛ گزارش روزانه ارسال نشد');
+            BotLog::info('⏭️ ربات خاموش است؛ گزارش روزانه ارسال نشد');
 
             return self::SUCCESS;
         }
@@ -29,12 +31,14 @@ class SendDailyReport extends Command
 
         if (! $message) {
             $this->warn('❌ هیچ رکوردی برای امروز پیدا نشد.');
+            BotLog::warning('⏭️ گزارش روزانه رد شد: رکوردی برای امروز نیست');
 
             return self::SUCCESS;
         }
 
         (new TelegramClient())->sendMessage(config('telegram.channel'), $message);
         $this->info('✅ گزارش روزانه ارسال شد');
+        BotLog::info('📤 گزارش روزانه به کانال ارسال شد');
 
         return self::SUCCESS;
     }

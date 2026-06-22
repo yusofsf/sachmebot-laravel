@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BarStatus;
 use App\Models\BotSetting;
 use App\Models\SilverPrice;
+use App\Support\BotLog;
 
 /**
  * منطق دامنه: محاسبات قیمت، خواندن/نوشتن تنظیمات و وضعیت شمش.
@@ -22,6 +23,7 @@ class SilverService
     public static function setBotActive(bool $on): void
     {
         BotSetting::updateOrCreate(['key' => 'is_active'], ['value' => $on ? '1' : '0']);
+        BotLog::info($on ? '🟢 ربات روشن شد' : '🔴 ربات خاموش شد');
     }
 
     public static function getBuyPercent(): float
@@ -34,6 +36,7 @@ class SilverService
     public static function setBuyPercent(float $p): void
     {
         BotSetting::updateOrCreate(['key' => 'buy_percent'], ['value' => (string) $p]);
+        BotLog::info('📉 درصد خرید تغییر کرد', ['percent' => $p]);
     }
 
     /**
@@ -56,6 +59,7 @@ class SilverService
     public static function setBarStatus(string $key, $value): void
     {
         BarStatus::updateOrCreate(['key' => $key], ['value' => (string) $value]);
+        BotLog::info('🥇 وضعیت شمش/نقره تغییر کرد', ['key' => $key, 'value' => $value]);
     }
 
     public static function resetBarStatus(): void
@@ -131,6 +135,17 @@ class SilverService
             'gram_995_buy' => $gram995Buy,
             'mithqal_995_price' => $mithqal995Price,
             'mithqal_995_price_buy' => $mithqal995PriceBuy,
+        ]);
+
+        BotLog::info('💰 قیمت گرفته و ذخیره شد', [
+            'gram_price' => $gramPrice,
+            'mithqal_price' => $mithqalPrice,
+            'dollar_price' => $dollarPrice,
+            'tether_price' => $tetherPrice,
+            'silver_ounce' => $silverPrice,
+            'gram_995' => $gram995,
+            'bar_999_price' => $bar999Price,
+            'bar_nadir_price' => $barNadirPrice,
         ]);
 
         return [
