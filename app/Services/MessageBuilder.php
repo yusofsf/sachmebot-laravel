@@ -37,11 +37,11 @@ class MessageBuilder
         if (! empty($d['gram_995'])) {
             $silver995 = <<<TXT
 
-{$RTL}⚖️ <b>گرم نقره 995</b>
+{$RTL}⚖️ <b>گرم نقره (عیار 995)</b>
 {$RTL}🔴 فروش: <b>{$f($d['gram_995'])}</b> تومان
 
 
-{$RTL}🥈 <b>مثقال نقره 995</b>
+{$RTL}🥈 <b>مثقال نقره (عیار 995)</b>
 {$RTL}🔴 فروش: <b>{$f($d['mithqal_995_price'])}</b> تومان
 
 TXT;
@@ -56,7 +56,7 @@ TXT;
 {$RTL}🔴 فروش: <b>{$f($d['gram_price'])}</b> تومان
 
 
-{$RTL}🥈 <b>مثقال نقره</b>
+{$RTL}🥈 <b>مثقال نقره (عیار 999/9)</b>
 {$RTL}🔴 فروش: <b>{$f($d['mithqal_price'])}</b> تومان
 
 {$silver995}
