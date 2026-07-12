@@ -29,18 +29,21 @@ class MessageBuilder
         $barNadir = $d['bar_nadir_price'] ?? null;
         $bar999Str = $bar999 !== null ? $f($bar999) : 'عدم موجودی';
         $barNadirStr = $barNadir !== null ? $f($barNadir) : 'عدم موجودی';
-
+#{$RTL}🟢 خرید: <b>{$f($d['gram_995_buy'])}</b> تومان
+#{$RTL}🟢 خرید: <b>{$f($d['mithqal_995_price_buy'])}</b> تومان
+#{$RTL}🟢 خرید: <b>{$f($d['gram_price_buy'])}</b> تومان
+#{$RTL}🟢 خرید: <b>{$f($d['mithqal_price_buy'])}</b> تومان
         $silver995 = '';
         if (! empty($d['gram_995'])) {
             $silver995 = <<<TXT
 
 {$RTL}⚖️ <b>گرم نقره 995</b>
 {$RTL}🔴 فروش: <b>{$f($d['gram_995'])}</b> تومان
-{$RTL}🟢 خرید: <b>{$f($d['gram_995_buy'])}</b> تومان
+
 
 {$RTL}🥈 <b>مثقال نقره 995</b>
 {$RTL}🔴 فروش: <b>{$f($d['mithqal_995_price'])}</b> تومان
-{$RTL}🟢 خرید: <b>{$f($d['mithqal_995_price_buy'])}</b> تومان
+
 TXT;
         }
 
@@ -51,16 +54,16 @@ TXT;
 
 {$RTL}⚖️ <b>گرم نقره (عیار 999/9)</b>
 {$RTL}🔴 فروش: <b>{$f($d['gram_price'])}</b> تومان
-{$RTL}🟢 خرید: <b>{$f($d['gram_price_buy'])}</b> تومان
+
 
 {$RTL}🥈 <b>مثقال نقره</b>
 {$RTL}🔴 فروش: <b>{$f($d['mithqal_price'])}</b> تومان
-{$RTL}🟢 خرید: <b>{$f($d['mithqal_price_buy'])}</b> تومان
+
 {$silver995}
 {$RTL}🥇 <b>شمش نقره 999/9</b> : <b>{$bar999Str}</b> تومان
 {$RTL}🥈 <b>شمش نقره نادیر</b> : <b>{$barNadirStr}</b> تومان
 
-{$RTL}⚜️ <b>انس نقره</b> : <b>{$silverOunce}</b> دلار
+{$RTL}💍 <b>انس نقره</b> : <b>{$silverOunce}</b> دلار
 
 {$RTL}🇺🇸 <b>دلار</b> : <b>{$f($d['dollar_price'])}</b> تومان
 {$RTL}💵 <b>تتر (USDT)</b> : <b>{$f($d['tether_price'])}</b> تومان
@@ -73,12 +76,16 @@ TXT;
 📆 {$date}
 🆔 @sachme_kaf
 TXT;
-
         $keyboard = [
-            'inline_keyboard' => [[
-                ['text' => '📢 عضویت در کانال', 'url' => 'https://t.me/sachme_kaf'],
-                ['text' => '💰 خرید و فروش نقره', 'url' => 'https://t.me/Reza_safarpour'],
-            ]],
+            'inline_keyboard' => [
+                [
+                    ['text' => '📢 عضویت در کانال', 'url' => 'https://t.me/sachme_kaf'],
+                    ['text' => '💰 خرید و فروش نقره', 'url' => 'https://t.me/Reza_safarpour'],
+                ],[
+                    ['text' => '📷 اینستاگرام', 'url' => 'https://instagram.com/safarpour.metals'],
+                    ['text' => '💰 سایت', 'url' => 'https://metalsp.ir'],
+                ]
+            ],
         ];
 
         return ['text' => $text, 'keyboard' => $keyboard];

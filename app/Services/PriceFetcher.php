@@ -17,7 +17,11 @@ class PriceFetcher
     public function tether(): ?int
     {
         try {
-            $resp = Http::timeout(10)->get('https://apiv2.nobitex.ir/v3/orderbook/USDTIRT');
+            $resp = Http::withOptions([
+                'curl' => [
+                    CURLOPT_INTERFACE => '62.60.211.91',
+                ],
+            ])->timeout(10)->get('https://apiv2.nobitex.ir/v3/orderbook/USDTIRT');
             $data = $resp->json();
 
             if (($data['status'] ?? null) === 'ok' && isset($data['lastTradePrice'])) {
@@ -54,7 +58,11 @@ class PriceFetcher
     public function silverOunce(): ?float
     {
         try {
-            $resp = Http::withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'])
+            $resp = Http::withOptions([
+                'curl' => [
+                    CURLOPT_INTERFACE => '62.60.211.91',
+                ],
+            ])->withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'])
                 ->timeout(10)
                 ->get('https://query2.finance.yahoo.com/v8/finance/chart/SI=F', [
                     'interval' => '1m',
@@ -78,7 +86,11 @@ class PriceFetcher
     protected function alanchand(string $keyword): ?float
     {
         try {
-            $resp = Http::withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'])
+            $resp = Http::withOptions([
+                'curl' => [
+                    CURLOPT_INTERFACE => '62.60.211.91',
+                ],
+            ])->withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'])
                 ->timeout(10)
                 ->get('https://alanchand.com/');
 
