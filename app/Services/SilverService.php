@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BarStatus;
 use App\Models\BotSetting;
 use App\Models\SilverPrice;
+use App\Support\BotLog;
 use Illuminate\Support\Facades\Cache;
 
 /**
