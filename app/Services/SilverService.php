@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BarStatus;
 use App\Models\BotSetting;
 use App\Models\SilverPrice;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * منطق دامنه: محاسبات قیمت، خواندن/نوشتن تنظیمات و وضعیت شمش.
@@ -12,28 +13,48 @@ use App\Models\SilverPrice;
  */
 class SilverService
 {
+    private const BOT_ACTIVE_CACHE_KEY = 'bot:setting:is_active';
+
+    private const BUY_PERCENT_CACHE_KEY = 'bot:setting:buy_percent';
+
+    private const BAR_CACHE_PREFIX = 'bot:bar:';
+
+    private const BAR_UNAVAILABLE = '__unavailable__';
+
     public static function isBotActive(): bool
     {
-        $row = BotSetting::find('is_active');
+        return (bool) Cache::rememberForever(
+            self::BOT_ACTIVE_CACHE_KEY,
+            function (): bool {
+                $row = BotSetting::find('is_active');
 
-        return $row && (int) $row->value === 1;
+                return $row && (int) $row->value === 1;
+            }
+        );
     }
 
     public static function setBotActive(bool $on): void
     {
         BotSetting::updateOrCreate(['key' => 'is_active'], ['value' => $on ? '1' : '0']);
+        Cache::forever(self::BOT_ACTIVE_CACHE_KEY, $on);
     }
 
     public static function getBuyPercent(): float
     {
-        $row = BotSetting::find('buy_percent');
+        return (float) Cache::rememberForever(
+            self::BUY_PERCENT_CACHE_KEY,
+            function (): float {
+                $row = BotSetting::find('buy_percent');
 
-        return $row ? (float) $row->value : 0.0;
+                return $row ? (float) $row->value : 0.0;
+            }
+        );
     }
 
     public static function setBuyPercent(float $p): void
     {
         BotSetting::updateOrCreate(['key' => 'buy_percent'], ['value' => (string) $p]);
+        Cache::forever(self::BUY_PERCENT_CACHE_KEY, $p);
     }
 
     /**
@@ -42,25 +63,38 @@ class SilverService
      */
     public static function getBarPrice(string $key): ?int
     {
-        $row = BarStatus::find($key);
-        if (! $row) {
-            return null;
-        }
-        if ($row->value === 'unavailable') {
-            return null;
-        }
+        $value = Cache::rememberForever(
+            self::BAR_CACHE_PREFIX.$key,
+            function () use ($key): int|string {
+                $row = BarStatus::find($key);
 
-        return is_numeric($row->value) ? (int) $row->value : null;
+                if (! $row || $row->value === 'unavailable') {
+                    return self::BAR_UNAVAILABLE;
+                }
+
+                return is_numeric($row->value)
+                    ? (int) $row->value
+                    : self::BAR_UNAVAILABLE;
+            }
+        );
+
+        return $value === self::BAR_UNAVAILABLE ? null : (int) $value;
     }
 
     public static function setBarStatus(string $key, $value): void
     {
         BarStatus::updateOrCreate(['key' => $key], ['value' => (string) $value]);
+        Cache::forever(
+            self::BAR_CACHE_PREFIX.$key,
+            is_numeric($value) ? (int) $value : self::BAR_UNAVAILABLE
+        );
     }
 
     public static function resetBarStatus(): void
     {
         BarStatus::query()->delete();
+        Cache::forget(self::BAR_CACHE_PREFIX.'bar_999');
+        Cache::forget(self::BAR_CACHE_PREFIX.'bar_nadir');
     }
 
     public static function getLastRecordFull(): ?SilverPrice

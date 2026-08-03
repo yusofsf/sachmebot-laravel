@@ -17,7 +17,7 @@ class TestFetch extends Command
 
     public function handle(): int
     {
-        $f = new PriceFetcher();
+        $f = new PriceFetcher;
 
         $this->info('== نتیجه‌ی fetcherها ==');
         $this->line('tether      = '.var_export($f->tether(), true));
@@ -39,7 +39,11 @@ class TestFetch extends Command
     protected function probe(string $name, string $url): void
     {
         try {
-            $r = Http::withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'])
+            $r = Http::withOptions([
+                'curl' => [
+                    CURLOPT_INTERFACE => '62.60.211.91',
+                ],
+            ])->withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'])
                 ->timeout(15)->get($url);
             $this->line(sprintf('%-12s status=%d bytes=%d', $name, $r->status(), strlen($r->body())));
         } catch (\Throwable $e) {

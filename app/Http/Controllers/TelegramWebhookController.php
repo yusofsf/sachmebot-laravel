@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\MessageBuilder;
 use App\Services\PriceFetcher;
 use App\Services\SilverService;
 use App\Services\TelegramClient;
@@ -414,12 +413,13 @@ class TelegramWebhookController extends Controller
      */
     protected function fetchAndStore(int $gramPrice, callable $reply): void
     {
-        $fetcher = new PriceFetcher();
-        $tether = $fetcher->tether();
-        $dollar = $fetcher->dollar();
-        $silver = $fetcher->silverOunce();
-        $dirham = $fetcher->dirham();
-        $euro = $fetcher->euro();
+        $fetcher = new PriceFetcher;
+        $prices = $fetcher->fetchAll();
+        $tether = $prices['tether'];
+        $dollar = $prices['dollar'];
+        $silver = $prices['silver'];
+        $dirham = $prices['dirham'];
+        $euro = $prices['euro'];
 
         if ($dollar === null || $silver === null) {
             $reply('❌ خطا در دریافت قیمت ارز یا انس نقره');
