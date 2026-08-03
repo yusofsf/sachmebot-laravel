@@ -167,6 +167,17 @@ class SilverService
             'mithqal_995_price_buy' => $mithqal995PriceBuy,
         ]);
 
+        BotLog::info('💰 قیمت گرفته و ذخیره شد', [
+            'gram_price' => $gramPrice,
+            'mithqal_price' => $mithqalPrice,
+            'dollar_price' => $dollarPrice,
+            'tether_price' => $tetherPrice,
+            'silver_ounce' => $silverPrice,
+            'gram_995' => $gram995,
+            'bar_999_price' => $bar999Price,
+            'bar_nadir_price' => $barNadirPrice,
+        ]);
+
         return [
             'mithqal_price' => $mithqalPrice,
             'gram_price_buy' => $gramPriceBuy,

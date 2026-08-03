@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\PriceFetcher;
 use App\Services\SilverService;
 use App\Services\TelegramClient;
+use App\Support\BotLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -91,6 +92,13 @@ class TelegramWebhookController extends Controller
             if (! SilverService::isBotActive()) {
                 if (isset($update['callback_query'])) {
                     $tg->answerCallbackQuery($update['callback_query']['id'], '🔴 ربات خاموش است', true);
+                } elseif (isset($update['message']['chat']['id']) && in_array($userId, $admins, true)) {
+                    // ادمین یکی از دکمه‌های منو را زده ولی ربات خاموش است → پیام بده تا بی‌صدا نماند
+                    $tg->sendMessage(
+                        $update['message']['chat']['id'],
+                        "🔴 ربات خاموش است\nبرای روشن کردن، دکمه‌ی «🟢 روشن کردن ربات» را بزنید.",
+                        $this->mainKeyboard()
+                    );
                 }
 
                 return response('ok', 200);
@@ -440,7 +448,7 @@ class TelegramWebhookController extends Controller
         $barNadirStr = $barNadir !== null ? $f($barNadir) : 'عدم موجودی';
         $now = Jalalian::now()->format('Y/m/d H:i');
 
-        $reply(
+        $text =
             "✅ مثقال 999/9:\n".
             "🔴 مثقال فروش: {$f($r['mithqal_price'])} تومان\n".
             "🟢 مثقال خرید: {$f($r['mithqal_price_buy'])} تومان\n\n".
@@ -455,8 +463,28 @@ class TelegramWebhookController extends Controller
             "🟢 خرید: {$f($r['gram_995_buy'])} تومان\n\n".
             "🥇 شمش 999   : {$bar999Str} تومان\n".
             "🥈 شمش نادیر : {$barNadirStr} تومان\n\n".
-            "📅 {$now}"
-        );
+            "📅 {$now}";
+
+        BotLog::info('📤 تأیید قیمت به ادمین ارسال شد', [
+            'gram_price' => $gramPrice,
+            'mithqal_price' => $r['mithqal_price'],
+            'mithqal_price_buy' => $r['mithqal_price_buy'],
+            'gram_price_buy' => $r['gram_price_buy'],
+            'dollar_price' => $dollar,
+            'tether_price' => $tether,
+            'silver_ounce' => $silver,
+            'dirham_price' => $dirham,
+            'euro_price' => $euro,
+            'gram_995' => $gram995,
+            'gram_995_buy' => $r['gram_995_buy'],
+            'mithqal_995_price' => $r['mithqal_995_price'],
+            'mithqal_995_price_buy' => $r['mithqal_995_price_buy'],
+            'bar_999_price' => $bar999,
+            'bar_nadir_price' => $barNadir,
+            'message_text' => $text,
+        ]);
+
+        $reply($text);
     }
 
     /** گارد مشترک ادمین/خاموشی. اگر باید برگردیم true می‌دهد. */

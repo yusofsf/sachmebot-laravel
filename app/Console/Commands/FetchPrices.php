@@ -6,6 +6,7 @@ use App\Services\MessageBuilder;
 use App\Services\PriceFetcher;
 use App\Services\SilverService;
 use App\Services\TelegramClient;
+use App\Support\BotLog;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -41,6 +42,9 @@ class FetchPrices extends Command
 
         if ($dollar === null || $silver === null) {
             $this->warn('❌ یکی از قیمت‌ها (دلار یا نقره) در دسترس نیست.');
+            BotLog::warning('⏭️ fetch-prices رد شد: دلار یا انس نقره در دسترس نیست', [
+                'dollar' => $dollar, 'silver' => $silver,
+            ]);
 
             return self::SUCCESS;
         }
@@ -48,6 +52,7 @@ class FetchPrices extends Command
         $last = SilverService::getLastRecordFull();
         if (! $last || ! $last->gram_price || ! $last->gram_995) {
             $this->warn('❌ هیچ قیمت گرمی (یا 995) قبلاً ثبت نشده.');
+            BotLog::warning('⏭️ fetch-prices رد شد: هنوز قیمت پایه ثبت نشده');
 
             return self::SUCCESS;
         }
@@ -62,11 +67,12 @@ class FetchPrices extends Command
 
         if (! SilverService::isBotActive()) {
             $this->info('ربات خاموش است؛ پیام به کانال ارسال نشد');
+            BotLog::info('⏭️ ربات خاموش است؛ fetch-prices به کانال نفرستاد');
 
             return self::SUCCESS;
         }
 
-        $built = MessageBuilder::buildMessage([
+        $data = [
             'mithqal_price' => $r['mithqal_price'],
             'gram_price' => $last->gram_price,
             'mithqal_price_buy' => $r['mithqal_price_buy'],
@@ -84,13 +90,19 @@ class FetchPrices extends Command
             'mithqal_995_price_buy' => $r['mithqal_995_price_buy'],
             'bar_999_price' => $bar999,
             'bar_nadir_price' => $barNadir,
-        ]);
+        ];
+
+        $built = MessageBuilder::buildMessage($data);
 
         (new TelegramClient)->sendMessage(
             config('telegram.channel'), $built['text'], $built['keyboard']
         );
 
         $this->info('✅ قیمت جدید به کانال ارسال شد');
+        BotLog::info('📤 قیمت به کانال ارسال شد', $data + [
+            'channel' => config('telegram.channel'),
+            'message_text' => $built['text'],
+        ]);
 
         return self::SUCCESS;
     }

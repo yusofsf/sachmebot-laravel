@@ -55,6 +55,7 @@ TXT;
 {$RTL}⚖️ <b>گرم نقره (عیار 999/9)</b>
 {$RTL}🔴 فروش: <b>{$f($d['gram_price'])}</b> تومان
 
+
 {$RTL}🥈 <b>مثقال نقره (عیار 999/9)</b>
 {$RTL}🔴 فروش: <b>{$f($d['mithqal_price'])}</b> تومان
 
@@ -75,17 +76,15 @@ TXT;
 📆 {$date}
 🆔 @sachme_kaf
 TXT;
-
         $keyboard = [
             'inline_keyboard' => [
                 [
                     ['text' => '📢 عضویت در کانال', 'url' => 'https://t.me/sachme_kaf'],
                     ['text' => '💰 خرید و فروش نقره', 'url' => 'https://t.me/Reza_safarpour'],
-                ],
-                [
+                ],[
                     ['text' => '📷 اینستاگرام', 'url' => 'https://instagram.com/safarpour.metals'],
                     ['text' => '💰 سایت', 'url' => 'https://metalsp.ir'],
-                ],
+                ]
             ],
         ];
 
