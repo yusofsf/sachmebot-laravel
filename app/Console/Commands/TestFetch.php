@@ -41,7 +41,10 @@ class TestFetch extends Command
         try {
             $r = Http::withOptions([
                 'curl' => [
-                    CURLOPT_INTERFACE => '62.60.211.91',
+                    CURLOPT_INTERFACE => config(
+                        'telegram.outbound_interface',
+                        '62.60.211.91'
+                    ),
                 ],
             ])->withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'])
                 ->timeout(15)->get($url);

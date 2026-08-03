@@ -2,6 +2,11 @@
 
 use Illuminate\Support\Facades\Schedule;
 
+Schedule::command('bot:warmup')
+    ->everyMinute()
+    ->withoutOverlapping(2)
+    ->when(fn () => (bool) config('telegram.warmup_enabled', true));
+
 // معادل کرون‌های پایتون. زمان‌بندی بر اساس APP_TIMEZONE (Asia/Tehran).
 Schedule::command('bot:fetch-prices')
     ->everyFiveMinutes()

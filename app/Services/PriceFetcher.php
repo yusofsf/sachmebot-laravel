@@ -215,7 +215,10 @@ class PriceFetcher
     {
         return [
             'curl' => [
-                CURLOPT_INTERFACE => self::INTERFACE_IP,
+                CURLOPT_INTERFACE => config(
+                    'telegram.outbound_interface',
+                    self::INTERFACE_IP
+                ),
             ],
         ];
     }
