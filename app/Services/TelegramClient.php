@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -11,9 +12,25 @@ class TelegramClient
 {
     protected string $base;
 
+    protected PendingRequest $http;
+
     public function __construct()
     {
         $this->base = 'https://api.telegram.org/bot'.config('telegram.token').'/';
+
+        $this->http = Http::baseUrl($this->base)
+            ->withOptions([
+                'curl' => [
+                    CURLOPT_INTERFACE => '62.60.211.91',
+                ],
+            ])
+            ->asForm()
+            ->acceptJson()
+            ->connectTimeout((int) config('telegram.connect_timeout', 3))
+            ->timeout((int) config('telegram.timeout', 10));
+
+        // Reuse the TCP/TLS connection for consecutive Bot API calls.
+        $this->http->setClient($this->http->buildClient());
     }
 
     public function sendMessage($chatId, string $text, ?array $replyMarkup = null, string $parseMode = 'HTML')
@@ -27,7 +44,7 @@ class TelegramClient
             $payload['reply_markup'] = json_encode($replyMarkup);
         }
 
-        return Http::asForm()->post($this->base.'sendMessage', $payload);
+        return $this->http->post('sendMessage', $payload);
     }
 
     public function editMessageText($chatId, $messageId, string $text, ?array $replyMarkup = null)
@@ -41,7 +58,7 @@ class TelegramClient
             $payload['reply_markup'] = json_encode($replyMarkup);
         }
 
-        return Http::asForm()->post($this->base.'editMessageText', $payload);
+        return $this->http->post('editMessageText', $payload);
     }
 
     public function answerCallbackQuery($callbackQueryId, ?string $text = null, bool $showAlert = false)
@@ -54,11 +71,11 @@ class TelegramClient
             $payload['text'] = $text;
         }
 
-        return Http::asForm()->post($this->base.'answerCallbackQuery', $payload);
+        return $this->http->post('answerCallbackQuery', $payload);
     }
 
     public function setWebhook(string $url)
     {
-        return Http::get($this->base.'setWebhook', ['url' => $url]);
+        return $this->http->get('setWebhook', ['url' => $url]);
     }
 }

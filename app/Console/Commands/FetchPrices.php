@@ -32,12 +32,13 @@ class FetchPrices extends Command
             return self::SUCCESS;
         }
 
-        $fetcher = new PriceFetcher();
-        $tether = $fetcher->tether();
-        $dollar = $fetcher->dollar();
-        $silver = $fetcher->silverOunce();
-        $dirham = $fetcher->dirham();
-        $euro = $fetcher->euro();
+        $fetcher = new PriceFetcher;
+        $prices = $fetcher->fetchAll();
+        $tether = $prices['tether'];
+        $dollar = $prices['dollar'];
+        $silver = $prices['silver'];
+        $dirham = $prices['dirham'];
+        $euro = $prices['euro'];
 
         if ($dollar === null || $silver === null) {
             $this->warn('❌ یکی از قیمت‌ها (دلار یا نقره) در دسترس نیست.');
@@ -93,7 +94,7 @@ class FetchPrices extends Command
 
         $built = MessageBuilder::buildMessage($data);
 
-        (new TelegramClient())->sendMessage(
+        (new TelegramClient)->sendMessage(
             config('telegram.channel'), $built['text'], $built['keyboard']
         );
 

@@ -7,6 +7,9 @@ return [
     // آدرس عمومی اپ؛ وب‌هوک روی WEBHOOK_URL/TOKEN ست می‌شود
     'webhook_url' => env('WEBHOOK_URL', ''),
 
+    'connect_timeout' => (int) env('TELEGRAM_CONNECT_TIMEOUT', 3),
+    'timeout' => (int) env('TELEGRAM_TIMEOUT', 10),
+
     // کانال مقصد ارسال قیمت‌ها
     'channel' => env('TELEGRAM_CHANNEL', '@sachme_kaf'),
 

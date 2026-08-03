@@ -29,17 +29,15 @@ class MessageBuilder
         $barNadir = $d['bar_nadir_price'] ?? null;
         $bar999Str = $bar999 !== null ? $f($bar999) : 'عدم موجودی';
         $barNadirStr = $barNadir !== null ? $f($barNadir) : 'عدم موجودی';
-#{$RTL}🟢 خرید: <b>{$f($d['gram_995_buy'])}</b> تومان
-#{$RTL}🟢 خرید: <b>{$f($d['mithqal_995_price_buy'])}</b> تومان
-#{$RTL}🟢 خرید: <b>{$f($d['gram_price_buy'])}</b> تومان
-#{$RTL}🟢 خرید: <b>{$f($d['mithqal_price_buy'])}</b> تومان
+
+        // {$RTL}🟢 خرید: <b>{$f($d['gram_995_buy'])}</b> تومان
+        // {$RTL}🟢 خرید: <b>{$f($d['mithqal_995_price_buy'])}</b> تومان
         $silver995 = '';
         if (! empty($d['gram_995'])) {
             $silver995 = <<<TXT
 
 {$RTL}⚖️ <b>گرم نقره (عیار 995)</b>
 {$RTL}🔴 فروش: <b>{$f($d['gram_995'])}</b> تومان
-
 
 {$RTL}🥈 <b>مثقال نقره (عیار 995)</b>
 {$RTL}🔴 فروش: <b>{$f($d['mithqal_995_price'])}</b> تومان
@@ -50,6 +48,8 @@ TXT;
         $silverOunce = number_format((float) $d['silver_price'], 2, '.', '');
         $date = Jalalian::now()->format('Y/m/d');
 
+        // {$RTL}🟢 خرید: <b>{$f($d['gram_price_buy'])}</b> تومان
+        // {$RTL}🟢 خرید: <b>{$f($d['mithqal_price_buy'])}</b> تومان
         $text = <<<TXT
 
 {$RTL}⚖️ <b>گرم نقره (عیار 999/9)</b>
