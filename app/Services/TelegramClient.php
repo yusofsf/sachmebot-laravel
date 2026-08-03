@@ -21,7 +21,10 @@ class TelegramClient
         $this->http = Http::baseUrl($this->base)
             ->withOptions([
                 'curl' => [
-                    CURLOPT_INTERFACE => '62.60.211.91',
+                    CURLOPT_INTERFACE => config(
+                        'telegram.outbound_interface',
+                        '62.60.211.91'
+                    ),
                 ],
             ])
             ->asForm()

@@ -9,6 +9,10 @@ return [
 
     'connect_timeout' => (int) env('TELEGRAM_CONNECT_TIMEOUT', 3),
     'timeout' => (int) env('TELEGRAM_TIMEOUT', 10),
+    'outbound_interface' => env('OUTBOUND_INTERFACE', '62.60.211.91'),
+
+    'warmup_enabled' => env('BOT_WARMUP_ENABLED', true),
+    'warmup_url' => env('BOT_WARMUP_URL', env('APP_URL')),
 
     // کانال مقصد ارسال قیمت‌ها
     'channel' => env('TELEGRAM_CHANNEL', '@sachme_kaf'),
