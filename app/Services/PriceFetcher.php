@@ -23,8 +23,12 @@ class PriceFetcher
 
     protected bool $alanchandFetched = false;
 
+    protected ?string $tgjuHtml = null;
+
+    protected ?\DOMXPath $tgjuXpath = null;
+
     /**
-     * دریافت هم‌زمان سه منبع مستقل؛ ارزهای alanchand از یک پاسخ استخراج می‌شوند.
+     * دریافت هم‌زمان منابع؛ TGJU فال‌بک ارزهای alanchand است.
      *
      * @return array{tether:?int,dollar:?float,silver:?float,dirham:?float,euro:?float}
      */
@@ -49,23 +53,34 @@ class PriceFetcher
                     ->withHeaders(['User-Agent' => self::USER_AGENT])
                     ->timeout(10)
                     ->get('https://alanchand.com/'),
+                $pool->as('tgju')
+                    ->withOptions($this->curlOptions())
+                    ->withHeaders(['User-Agent' => self::USER_AGENT])
+                    ->timeout(20)
+                    ->get('https://www.tgju.org/currency'),
             ]);
 
             $this->alanchandFetched = true;
             $this->alanchandHtml = $responses['alanchand'] instanceof Response
                 ? $responses['alanchand']->body()
                 : null;
+            $this->tgjuHtml = $responses['tgju'] instanceof Response
+                ? $responses['tgju']->body()
+                : null;
 
             return [
                 'tether' => $responses['tether'] instanceof Response
                     ? $this->parseTether($responses['tether'])
                     : null,
-                'dollar' => $this->parseAlanchand('دلار'),
+                'dollar' => $this->parseAlanchand('دلار')
+                    ?? $this->parseTgju(['price_dollar_rl', 'price_dollar_dt']),
                 'silver' => $responses['silver'] instanceof Response
                     ? $this->parseSilverOunce($responses['silver'])
                     : null,
-                'dirham' => $this->parseAlanchand('درهم'),
-                'euro' => $this->parseAlanchand('یورو'),
+                'dirham' => $this->parseAlanchand('درهم')
+                    ?? $this->parseTgju(['price_aed', 'PRICE_AED']),
+                'euro' => $this->parseAlanchand('یورو')
+                    ?? $this->parseTgju(['price_eur']),
             ];
         } catch (\Throwable $e) {
             Log::error('parallel price fetch failed: '.$e->getMessage());
@@ -206,6 +221,43 @@ class PriceFetcher
             $sell = str_replace([',', '،', ' ', "\u{00a0}", "\u{200f}", "\u{200e}"], '', $sell);
 
             return is_numeric($sell) ? (float) $sell : null;
+        }
+
+        return null;
+    }
+
+    /** نرخ فعلی TGJU (ریال) → تومان */
+    protected function parseTgju(array $marketRows): ?float
+    {
+        if (empty($this->tgjuHtml)) {
+            return null;
+        }
+
+        if (! $this->tgjuXpath) {
+            $doc = new \DOMDocument;
+            libxml_use_internal_errors(true);
+            $doc->loadHTML('<?xml encoding="utf-8" ?>'.$this->tgjuHtml);
+            libxml_clear_errors();
+            $this->tgjuXpath = new \DOMXPath($doc);
+        }
+
+        foreach ($marketRows as $marketRow) {
+            $query = sprintf(
+                '//tr[@data-market-row="%s"]//td[contains(concat(" ", normalize-space(@class), " "), " nf ")][1]',
+                $marketRow
+            );
+            $cell = $this->tgjuXpath->query($query)?->item(0);
+
+            if (! $cell) {
+                continue;
+            }
+
+            $price = $this->normalizeDigits(trim($cell->textContent));
+            $price = str_replace([',', '،', ' ', "\u{00a0}", "\u{200f}", "\u{200e}"], '', $price);
+
+            if (is_numeric($price)) {
+                return (float) $price / 10;
+            }
         }
 
         return null;
