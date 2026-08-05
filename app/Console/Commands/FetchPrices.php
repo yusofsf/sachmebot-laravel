@@ -92,11 +92,22 @@ class FetchPrices extends Command
             'bar_nadir_price' => $barNadir,
         ];
 
-        $built = MessageBuilder::buildMessage($data);
+        try {
+            $built = MessageBuilder::buildMessage($data);
 
-        (new TelegramClient)->sendMessage(
-            config('telegram.channel'), $built['text'], $built['keyboard']
-        );
+            (new TelegramClient)->sendMessage(
+                config('telegram.channel'), $built['text'], $built['keyboard']
+            );
+        } catch (\Throwable $e) {
+            $this->error('Telegram send failed: '.$e->getMessage());
+            BotLog::warning('❌ ارسال قیمت به کانال ناموفق بود', [
+                'channel' => config('telegram.channel'),
+                'error' => $e->getMessage(),
+                'exception' => $e::class,
+            ]);
+
+            return self::FAILURE;
+        }
 
         $this->info('✅ قیمت جدید به کانال ارسال شد');
         BotLog::info('📤 قیمت به کانال ارسال شد', $data + [
