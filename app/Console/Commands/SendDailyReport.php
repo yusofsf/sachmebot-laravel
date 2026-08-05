@@ -36,7 +36,18 @@ class SendDailyReport extends Command
             return self::SUCCESS;
         }
 
-        (new TelegramClient())->sendMessage(config('telegram.channel'), $message);
+        try {
+            (new TelegramClient)->sendMessage(config('telegram.channel'), $message);
+        } catch (\Throwable $e) {
+            $this->error('Telegram send failed: '.$e->getMessage());
+            BotLog::warning('❌ ارسال گزارش روزانه به کانال ناموفق بود', [
+                'channel' => config('telegram.channel'),
+                'error' => $e->getMessage(),
+                'exception' => $e::class,
+            ]);
+
+            return self::FAILURE;
+        }
         $this->info('✅ گزارش روزانه ارسال شد');
         BotLog::info('📤 گزارش روزانه به کانال ارسال شد', [
             'channel' => config('telegram.channel'),

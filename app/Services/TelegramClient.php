@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
+use Throwable;
 
 /**
  * رپر سبک روی Telegram Bot API (جایگزین python-telegram-bot).
@@ -36,7 +39,7 @@ class TelegramClient
         $this->http->setClient($this->http->buildClient());
     }
 
-    public function sendMessage($chatId, string $text, ?array $replyMarkup = null, string $parseMode = 'HTML')
+    public function sendMessage($chatId, string $text, ?array $replyMarkup = null, string $parseMode = 'HTML'): Response
     {
         $payload = [
             'chat_id' => $chatId,
@@ -47,7 +50,39 @@ class TelegramClient
             $payload['reply_markup'] = json_encode($replyMarkup);
         }
 
-        return $this->http->post('sendMessage', $payload);
+        try {
+            $response = $this->http->post('sendMessage', $payload);
+        } catch (Throwable $e) {
+            throw new RuntimeException(
+                'Telegram connection failed: '.$this->sanitizeError($e->getMessage()),
+                0,
+                $e
+            );
+        }
+
+        if (! $response->successful() || $response->json('ok') !== true) {
+            $description = $response->json('description');
+            $description = is_string($description)
+                ? $this->sanitizeError($description)
+                : 'No error description returned';
+
+            throw new RuntimeException(
+                "Telegram API rejected sendMessage (HTTP {$response->status()}): {$description}"
+            );
+        }
+
+        return $response;
+    }
+
+    private function sanitizeError(string $message): string
+    {
+        $token = (string) config('telegram.token');
+
+        if ($token !== '') {
+            $message = str_replace($token, '[REDACTED]', $message);
+        }
+
+        return preg_replace('/bot\d+:[A-Za-z0-9_-]+/', 'bot[REDACTED]', $message) ?? $message;
     }
 
     public function editMessageText($chatId, $messageId, string $text, ?array $replyMarkup = null)
