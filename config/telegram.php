@@ -7,8 +7,8 @@ return [
     // آدرس عمومی اپ؛ وب‌هوک روی WEBHOOK_URL/TOKEN ست می‌شود
     'webhook_url' => env('WEBHOOK_URL', ''),
 
-    'connect_timeout' => (int) env('TELEGRAM_CONNECT_TIMEOUT', 3),
-    'timeout' => (int) env('TELEGRAM_TIMEOUT', 10),
+    'connect_timeout' => (int) env('TELEGRAM_CONNECT_TIMEOUT', 2),
+    'timeout' => (int) env('TELEGRAM_TIMEOUT', 6),
     'outbound_interface' => env('OUTBOUND_INTERFACE', '62.60.211.91'),
 
     'warmup_enabled' => env('BOT_WARMUP_ENABLED', true),

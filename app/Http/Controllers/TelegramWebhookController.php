@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Morilog\Jalali\Jalalian;
 
+use function Illuminate\Support\defer;
+
 class TelegramWebhookController extends Controller
 {
     // ---------- متن دکمه‌های منوی اصلی (Reply Keyboard) ----------
@@ -58,60 +60,76 @@ class TelegramWebhookController extends Controller
             abort(404);
         }
 
-        try {
-            $update = $request->json()->all();
-
-            $userId = null;
-            $text = null;
-            $callbackData = null;
-
-            if (isset($update['message'])) {
-                $userId = $update['message']['from']['id'] ?? null;
-                $text = isset($update['message']['text']) ? trim($update['message']['text']) : '';
-            } elseif (isset($update['callback_query'])) {
-                $userId = $update['callback_query']['from']['id'] ?? null;
-                $callbackData = $update['callback_query']['data'] ?? null;
-            }
-
-            $admins = config('telegram.admins');
-
-            // اجازه‌ی ویژه به ادمین حتی وقتی ربات خاموش است
-            if (in_array($userId, $admins, true)) {
-                if (
-                    $text === '/start'
-                    || in_array($text, $this->adminAllowedTexts, true)
-                    || in_array($callbackData, $this->adminAllowed, true)
-                ) {
-                    $this->processUpdate($update, $tg);
-
-                    return response('ok', 200);
-                }
-            }
-
-            // ربات خاموش است
-            if (! SilverService::isBotActive()) {
-                if (isset($update['callback_query'])) {
-                    $tg->answerCallbackQuery($update['callback_query']['id'], '🔴 ربات خاموش است', true);
-                } elseif (isset($update['message']['chat']['id']) && in_array($userId, $admins, true)) {
-                    // ادمین یکی از دکمه‌های منو را زده ولی ربات خاموش است → پیام بده تا بی‌صدا نماند
-                    $tg->sendMessage(
-                        $update['message']['chat']['id'],
-                        "🔴 ربات خاموش است\nبرای روشن کردن، دکمه‌ی «🟢 روشن کردن ربات» را بزنید.",
-                        $this->mainKeyboard()
-                    );
-                }
-
-                return response('ok', 200);
-            }
-
-            $this->processUpdate($update, $tg);
-
+        $update = $request->json()->all();
+        if ($update === []) {
             return response('ok', 200);
-        } catch (\Throwable $e) {
-            Log::error('🔥 WEBHOOK ERROR: '.$e->getMessage()."\n".$e->getTraceAsString());
-
-            return response('error', 500);
         }
+
+        // Telegram retries a webhook when it does not receive 2xx quickly. Reserve
+        // the update before acknowledging it so a slow API call cannot create a
+        // multi-minute retry loop or duplicate messages.
+        $updateId = $update['update_id'] ?? null;
+        if ($updateId !== null && ! Cache::add("telegram:update:{$updateId}", true, now()->addDay())) {
+            return response('ok', 200);
+        }
+
+        defer(function () use ($update, $tg): void {
+            try {
+                $this->handleWebhookUpdate($update, $tg);
+            } catch (\Throwable $e) {
+                Log::error('🔥 WEBHOOK PROCESSING ERROR: '.$e->getMessage()."\n".$e->getTraceAsString());
+            }
+        });
+
+        return response('ok', 200);
+    }
+
+    protected function handleWebhookUpdate(array $update, TelegramClient $tg): void
+    {
+        $userId = null;
+        $text = null;
+        $callbackData = null;
+
+        if (isset($update['message'])) {
+            $userId = $update['message']['from']['id'] ?? null;
+            $text = isset($update['message']['text']) ? trim($update['message']['text']) : '';
+        } elseif (isset($update['callback_query'])) {
+            $userId = $update['callback_query']['from']['id'] ?? null;
+            $callbackData = $update['callback_query']['data'] ?? null;
+        }
+
+        $admins = config('telegram.admins');
+
+        // اجازه‌ی ویژه به ادمین حتی وقتی ربات خاموش است
+        if (in_array($userId, $admins, true)) {
+            if (
+                $text === '/start'
+                || in_array($text, $this->adminAllowedTexts, true)
+                || in_array($callbackData, $this->adminAllowed, true)
+            ) {
+                $this->processUpdate($update, $tg);
+
+                return;
+            }
+        }
+
+        // ربات خاموش است
+        if (! SilverService::isBotActive()) {
+            if (isset($update['callback_query'])) {
+                $tg->answerCallbackQuery($update['callback_query']['id'], '🔴 ربات خاموش است', true);
+            } elseif (isset($update['message']['chat']['id']) && in_array($userId, $admins, true)) {
+                // ادمین یکی از دکمه‌های منو را زده ولی ربات خاموش است → پیام بده تا بی‌صدا نماند
+                $tg->sendMessage(
+                    $update['message']['chat']['id'],
+                    "🔴 ربات خاموش است\nبرای روشن کردن، دکمه‌ی «🟢 روشن کردن ربات» را بزنید.",
+                    $this->mainKeyboard()
+                );
+            }
+
+            return;
+        }
+
+        $this->processUpdate($update, $tg);
     }
 
     protected function processUpdate(array $update, TelegramClient $tg): void

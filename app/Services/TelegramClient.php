@@ -32,8 +32,9 @@ class TelegramClient
             ])
             ->asForm()
             ->acceptJson()
-            ->connectTimeout((int) config('telegram.connect_timeout', 3))
-            ->timeout((int) config('telegram.timeout', 10));
+            ->connectTimeout((int) config('telegram.connect_timeout', 2))
+            ->timeout((int) config('telegram.timeout', 6))
+            ->retry(2, 250);
 
         // Reuse the TCP/TLS connection for consecutive Bot API calls.
         $this->http->setClient($this->http->buildClient());

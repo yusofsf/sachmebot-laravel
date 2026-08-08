@@ -28,7 +28,7 @@ class PriceFetcher
     protected ?\DOMXPath $tgjuXpath = null;
 
     /**
-     * دریافت هم‌زمان منابع؛ TGJU فال‌بک ارزهای alanchand است.
+     * دریافت هم‌زمان منابع اصلی؛ TGJU فقط در صورت ناموفق بودن alanchand فراخوانی می‌شود.
      *
      * @return array{tether:?int,dollar:?float,silver:?float,dirham:?float,euro:?float}
      */
@@ -53,33 +53,35 @@ class PriceFetcher
                     ->withHeaders(['User-Agent' => self::USER_AGENT])
                     ->timeout(10)
                     ->get('https://alanchand.com/'),
-                $pool->as('tgju')
-                    ->withOptions($this->curlOptions())
-                    ->withHeaders(['User-Agent' => self::USER_AGENT])
-                    ->timeout(20)
-                    ->get('https://www.tgju.org/currency'),
             ]);
 
             $this->alanchandFetched = true;
             $this->alanchandHtml = $responses['alanchand'] instanceof Response
                 ? $responses['alanchand']->body()
                 : null;
-            $this->tgjuHtml = $responses['tgju'] instanceof Response
-                ? $responses['tgju']->body()
-                : null;
+
+            $dollar = $this->parseAlanchand('دلار');
+            $dirham = $this->parseAlanchand('درهم');
+            $euro = $this->parseAlanchand('یورو');
+
+            // Do not make every webhook wait for the slow fallback source. Fetch
+            // it only when at least one value is actually missing.
+            if ($dollar === null || $dirham === null || $euro === null) {
+                $this->fetchTgju();
+            }
 
             return [
                 'tether' => $responses['tether'] instanceof Response
                     ? $this->parseTether($responses['tether'])
                     : null,
-                'dollar' => $this->parseAlanchand('دلار')
+                'dollar' => $dollar
                     ?? $this->parseTgju(['price_dollar_rl', 'price_dollar_dt']),
                 'silver' => $responses['silver'] instanceof Response
                     ? $this->parseSilverOunce($responses['silver'])
                     : null,
-                'dirham' => $this->parseAlanchand('درهم')
+                'dirham' => $dirham
                     ?? $this->parseTgju(['price_aed', 'PRICE_AED']),
-                'euro' => $this->parseAlanchand('یورو')
+                'euro' => $euro
                     ?? $this->parseTgju(['price_eur']),
             ];
         } catch (\Throwable $e) {
@@ -261,6 +263,22 @@ class PriceFetcher
         }
 
         return null;
+    }
+
+    protected function fetchTgju(): void
+    {
+        try {
+            $response = Http::withOptions($this->curlOptions())
+                ->withHeaders(['User-Agent' => self::USER_AGENT])
+                ->connectTimeout(2)
+                ->timeout(6)
+                ->get('https://www.tgju.org/currency');
+
+            $this->tgjuHtml = $response->successful() ? $response->body() : null;
+        } catch (\Throwable $e) {
+            Log::warning('TGJU fallback fetch failed: '.$e->getMessage());
+            $this->tgjuHtml = null;
+        }
     }
 
     protected function curlOptions(): array
