@@ -46,11 +46,36 @@ TXT;
         }
 
         $silverOunce = number_format((float) $d['silver_price'], 2, '.', '');
+        $gold = $d['gold'];
+        $goldOunce = number_format((float) $gold['ounce'], 2, '.', '');
         $date = Jalalian::now()->format('Y/m/d');
 
         // {$RTL}🟢 خرید: <b>{$f($d['gram_price_buy'])}</b> تومان
         // {$RTL}🟢 خرید: <b>{$f($d['mithqal_price_buy'])}</b> تومان
         $text = <<<TXT
+
+{$RTL}🪙 <b>سکه تمام</b>
+{$RTL}🔴 فروش: <b>{$f($gold['bahar_sell'])}</b> تومان
+{$RTL}🟢 خرید: <b>{$f($gold['bahar_buy'])}</b> تومان
+
+{$RTL}🪙 <b>نیم سکه</b>
+{$RTL}🔴 فروش: <b>{$f($gold['nim_sell'])}</b> تومان
+{$RTL}🟢 خرید: <b>{$f($gold['nim_buy'])}</b> تومان
+
+{$RTL}🪙 <b>ربع سکه</b>
+{$RTL}🔴 فروش: <b>{$f($gold['rob_sel'])}</b> تومان
+{$RTL}🟢 خرید: <b>{$f($gold['rob_buy'])}</b> تومان
+
+{$RTL}🥇 <b>مثقال طلا 18 عیار (750)</b>
+{$RTL}🔴 فروش: <b>{$f($gold['mithqal_sell'])}</b> تومان
+{$RTL}🟢 خرید: <b>{$f($gold['mithqal_buy'])}</b> تومان
+
+{$RTL}⚖️ <b>گرم طلا 18 عیار (750)</b>
+{$RTL}🔴 فروش: <b>{$f($gold['geram_sell'])}</b> تومان
+{$RTL}🟢 خرید: <b>{$f($gold['geram_buy'])}</b> تومان
+
+{$RTL}🌍 <b>انس طلا</b>
+{$RTL}🔴 فروش: <b>{$goldOunce}</b> دلار
 
 {$RTL}⚖️ <b>گرم نقره (عیار 999/9)</b>
 {$RTL}🔴 فروش: <b>{$f($d['gram_price'])}</b> تومان
@@ -75,16 +100,17 @@ TXT;
 
 📆 {$date}
 🆔 @sachme_kaf
+{$RTL}📞 تماس با ما: 05191092885
 TXT;
         $keyboard = [
             'inline_keyboard' => [
                 [
                     ['text' => '📢 عضویت در کانال', 'url' => 'https://t.me/sachme_kaf'],
                     ['text' => '💰 خرید و فروش نقره', 'url' => 'https://t.me/Reza_safarpour'],
-                ],[
+                ], [
                     ['text' => '📷 اینستاگرام', 'url' => 'https://instagram.com/safarpour.metals'],
                     ['text' => '💰 سایت', 'url' => 'https://metalsp.ir'],
-                ]
+                ],
             ],
         ];
 
@@ -226,6 +252,7 @@ TXT;
 {$RTL}🔻کمترین   : {$minBubbleGramSign} {$f($minBubbleGram)}
 
 @sachme_kaf
+{$RTL}📞 تماس با ما: 05191092885
 TXT;
     }
 }
