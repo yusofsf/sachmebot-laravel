@@ -63,7 +63,7 @@ TXT;
 {$RTL}🟢 خرید: <b>{$f($gold['nim_buy'])}</b> تومان
 
 {$RTL}🪙 <b>ربع سکه</b>
-{$RTL}🔴 فروش: <b>{$f($gold['rob_sel'])}</b> تومان
+{$RTL}🔴 فروش: <b>{$f($gold['rob_sell'])}</b> تومان
 {$RTL}🟢 خرید: <b>{$f($gold['rob_buy'])}</b> تومان
 
 {$RTL}🥇 <b>مثقال طلا 18 عیار (750)</b>
@@ -202,6 +202,8 @@ TXT;
             $silver995Section = "\n{$RTL}گرم نقره 995:\n{$RTL}🔺بیشترین : {$f($row->max_gram_995)}\n{$RTL}🔻کمترین   : {$f($row->min_gram_995)}\n\n{$RTL} مثقال نقره 995:\n{$RTL}🔺بیشترین : {$f($row->max_mithqal_995)}\n{$RTL}🔻کمترین   : {$f($row->min_mithqal_995)}\n";
         }
 
+        $goldSection = self::buildGoldDailySection((new GoldPriceService)->dailyStats(), $f);
+
         $minOunce = number_format((float) $row->min_ounce, 2, '.', '');
         $maxOunce = number_format((float) $row->max_ounce, 2, '.', '');
         $firstOunce = number_format((float) $row->first_ounce, 2, '.', '');
@@ -227,6 +229,7 @@ TXT;
 {$RTL}🟢 اولین معامله   : {$f($row->first_gram)}
 {$RTL}🔴 آخرین معامله : {$f($row->last_gram)}
 {$silver995Section}
+{$goldSection}
 {$RTL}انس نقره:
 {$RTL}🔺بیشترین           : {$maxOunce}
 {$RTL}🔻کمترین            : {$minOunce}
@@ -254,5 +257,56 @@ TXT;
 @sachme_kaf
 {$RTL}📞 تماس با ما: 05191092885
 TXT;
+    }
+
+    protected static function buildGoldDailySection(?array $stats, callable $f): string
+    {
+        if ($stats === null) {
+            return '';
+        }
+
+        $RTL = self::RTL;
+        $items = [
+            ['title' => 'سکه تمام', 'sell' => 'bahar_sell', 'buy' => 'bahar_buy'],
+            ['title' => 'نیم سکه', 'sell' => 'nim_sell', 'buy' => 'nim_buy'],
+            ['title' => 'ربع سکه', 'sell' => 'rob_sell', 'buy' => 'rob_buy'],
+            ['title' => 'مثقال طلا 18 عیار (750)', 'sell' => 'mithqal_sell', 'buy' => 'mithqal_buy'],
+            ['title' => 'گرم طلا 18 عیار (750)', 'sell' => 'geram_sell', 'buy' => 'geram_buy'],
+        ];
+
+        $section = "\n{$RTL}🥇 قیمت‌های طلای امروز\n";
+        foreach ($items as $item) {
+            $sell = $stats[$item['sell']] ?? null;
+            $buy = $stats[$item['buy']] ?? null;
+            if (! self::hasCompleteRange($sell) && ! self::hasCompleteRange($buy)) {
+                continue;
+            }
+
+            $section .= "\n{$RTL}{$item['title']}:\n";
+            if (self::hasCompleteRange($sell)) {
+                $section .= "{$RTL}🔴 بیشترین فروش: {$f($sell['max'])}\n";
+                $section .= "{$RTL}🔴 کمترین فروش: {$f($sell['min'])}\n";
+            }
+            if (self::hasCompleteRange($buy)) {
+                $section .= "{$RTL}🟢 بیشترین خرید: {$f($buy['max'])}\n";
+                $section .= "{$RTL}🟢 کمترین خرید: {$f($buy['min'])}\n";
+            }
+        }
+
+        $ounce = $stats['ounce'] ?? null;
+        if (self::hasCompleteRange($ounce)) {
+            $minOunce = number_format((float) $ounce['min'], 2, '.', '');
+            $maxOunce = number_format((float) $ounce['max'], 2, '.', '');
+            $section .= "\n{$RTL}انس طلا:\n";
+            $section .= "{$RTL}🔺بیشترین: {$maxOunce} دلار\n";
+            $section .= "{$RTL}🔻کمترین: {$minOunce} دلار\n";
+        }
+
+        return $section."\n";
+    }
+
+    protected static function hasCompleteRange(mixed $range): bool
+    {
+        return is_array($range) && $range['min'] !== null && $range['max'] !== null;
     }
 }
