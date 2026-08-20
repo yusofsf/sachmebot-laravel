@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Support\BotLog;
+use Illuminate\Support\Carbon;
 
 class GoldPriceService
 {
@@ -10,10 +11,25 @@ class GoldPriceService
     private const REQUIRED_COLUMNS = [
         'bahar_sell', 'bahar_buy',
         'nim_sell', 'nim_buy',
-        'rob_sel', 'rob_buy',
+        'rob_sell', 'rob_buy',
         'mithqal_sell', 'mithqal_buy',
         'geram_sell', 'geram_buy',
         'ounce',
+    ];
+
+    /** نام‌های جایگزین رایج در نسخه‌های مختلف دیتابیس سایت. */
+    private const COLUMN_ALIASES = [
+        'bahar_sell' => ['bahar_sell'],
+        'bahar_buy' => ['bahar_buy'],
+        'nim_sell' => ['nim_sell'],
+        'nim_buy' => ['nim_buy'],
+        'rob_sell' => ['rob_sell', 'rob_sel'],
+        'rob_buy' => ['rob_buy'],
+        'mithqal_sell' => ['mithqal_sell', 'mesghal_sell', 'misghal_sell'],
+        'mithqal_buy' => ['mithqal_buy', 'mesghal_buy', 'misghal_buy'],
+        'geram_sell' => ['geram_sell', 'gram_sell'],
+        'geram_buy' => ['geram_buy', 'gram_buy'],
+        'ounce' => ['ounce', 'ounce_sell', 'ons', 'ons_sell'],
     ];
 
     /**
@@ -43,14 +59,23 @@ class GoldPriceService
                 BotLog::warning('جدول قیمت طلا با ستون‌های مورد انتظار پیدا نشد', [
                     'path' => $path,
                     'required_columns' => self::REQUIRED_COLUMNS,
+                    'database_schema' => $this->databaseSchema($pdo),
                 ]);
 
                 return null;
             }
 
             $columns = $this->tableColumns($pdo, $table);
+            $columnMap = $this->resolveColumnMap($columns);
             $order = $this->latestOrder($columns);
-            $quotedColumns = implode(', ', array_map($this->quoteIdentifier(...), self::REQUIRED_COLUMNS));
+            $quotedColumns = implode(', ', array_map(
+                fn (string $canonical): string => sprintf(
+                    '%s AS %s',
+                    $this->quoteIdentifier($columnMap[$canonical]),
+                    $this->quoteIdentifier($canonical)
+                ),
+                self::REQUIRED_COLUMNS
+            ));
             $sql = sprintf(
                 'SELECT %s FROM %s ORDER BY %s DESC LIMIT 1',
                 $quotedColumns,
@@ -88,6 +113,95 @@ class GoldPriceService
         }
     }
 
+    /**
+     * کمترین و بیشترین قیمت‌های امروز برای گزارش پایان روز.
+     *
+     * @return array<string, array{min:int|float|null,max:int|float|null}>|null
+     */
+    public function dailyStats(?Carbon $date = null): ?array
+    {
+        $path = $this->databasePath((string) config('prices.gold_database_path'));
+        if ($path === '' || ! is_file($path) || ! is_readable($path)) {
+            BotLog::warning('دیتابیس قیمت طلای سایت برای گزارش روزانه در دسترس نیست', [
+                'path' => $path,
+            ]);
+
+            return null;
+        }
+
+        try {
+            $pdo = new \PDO('sqlite:'.$path, null, null, [
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+                \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+            ]);
+            $pdo->exec('PRAGMA busy_timeout = 3000');
+
+            $table = $this->findPriceTable($pdo);
+            if ($table === null) {
+                BotLog::warning('جدول قیمت طلا برای گزارش روزانه پیدا نشد', [
+                    'path' => $path,
+                    'database_schema' => $this->databaseSchema($pdo),
+                ]);
+
+                return null;
+            }
+
+            $columns = $this->tableColumns($pdo, $table);
+            $createdAt = $this->actualColumn($columns, 'created_at');
+            if ($createdAt === null) {
+                BotLog::warning('ستون created_at جدول قیمت طلا پیدا نشد', [
+                    'table' => $table,
+                    'columns' => $columns,
+                ]);
+
+                return null;
+            }
+
+            $columnMap = $this->resolveColumnMap($columns);
+            $selects = [];
+            foreach ($columnMap as $canonical => $actual) {
+                $column = $this->quoteIdentifier($actual);
+                $selects[] = sprintf('MIN(%s) AS %s', $column, $this->quoteIdentifier($canonical.'_min'));
+                $selects[] = sprintf('MAX(%s) AS %s', $column, $this->quoteIdentifier($canonical.'_max'));
+            }
+
+            $sql = sprintf(
+                'SELECT %s FROM %s WHERE DATE(%s) = :date',
+                implode(', ', $selects),
+                $this->quoteIdentifier($table),
+                $this->quoteIdentifier($createdAt)
+            );
+            $statement = $pdo->prepare($sql);
+            $statement->execute([
+                'date' => ($date ?? Carbon::now(config('app.timezone')))->toDateString(),
+            ]);
+            $row = $statement->fetch();
+
+            if (! is_array($row)) {
+                return null;
+            }
+
+            $stats = [];
+            $hasValue = false;
+            foreach (self::REQUIRED_COLUMNS as $canonical) {
+                $min = $this->numericValue($row[$canonical.'_min'] ?? null);
+                $max = $this->numericValue($row[$canonical.'_max'] ?? null);
+                $stats[$canonical] = ['min' => $min, 'max' => $max];
+                $hasValue = $hasValue || $min !== null || $max !== null;
+            }
+
+            return $hasValue ? $stats : null;
+        } catch (\Throwable $e) {
+            BotLog::warning('خواندن آمار روزانه قیمت طلا ناموفق بود', [
+                'path' => $path,
+                'error' => $e->getMessage(),
+                'exception' => $e::class,
+            ]);
+
+            return null;
+        }
+    }
+
     protected function findPriceTable(\PDO $pdo): ?string
     {
         $configured = trim((string) config('prices.gold_price_table', ''));
@@ -96,7 +210,7 @@ class GoldPriceService
         }
 
         $tables = $pdo->query(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+            "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'"
         )->fetchAll(\PDO::FETCH_COLUMN);
 
         foreach ($tables as $table) {
@@ -110,9 +224,48 @@ class GoldPriceService
 
     protected function hasRequiredColumns(\PDO $pdo, string $table): bool
     {
-        $columns = $this->tableColumns($pdo, $table);
+        return count($this->resolveColumnMap($this->tableColumns($pdo, $table))) === count(self::REQUIRED_COLUMNS);
+    }
 
-        return array_diff(self::REQUIRED_COLUMNS, $columns) === [];
+    /**
+     * @param  list<string>  $columns
+     * @return array<string, string> نگاشت نام استاندارد به نام واقعی ستون
+     */
+    protected function resolveColumnMap(array $columns): array
+    {
+        $actualByLowercase = [];
+        foreach ($columns as $column) {
+            $actualByLowercase[strtolower($column)] = $column;
+        }
+
+        $resolved = [];
+        foreach (self::COLUMN_ALIASES as $canonical => $aliases) {
+            foreach ($aliases as $alias) {
+                if (isset($actualByLowercase[strtolower($alias)])) {
+                    $resolved[$canonical] = $actualByLowercase[strtolower($alias)];
+                    break;
+                }
+            }
+        }
+
+        return $resolved;
+    }
+
+    /** @return array<string, list<string>> */
+    protected function databaseSchema(\PDO $pdo): array
+    {
+        $sources = $pdo->query(
+            "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        )->fetchAll(\PDO::FETCH_COLUMN);
+        $schema = [];
+
+        foreach ($sources as $source) {
+            if (is_string($source)) {
+                $schema[$source] = $this->tableColumns($pdo, $source);
+            }
+        }
+
+        return $schema;
     }
 
     /** @return list<string> */
@@ -132,6 +285,18 @@ class GoldPriceService
         }
 
         return 'rowid';
+    }
+
+    /** @param list<string> $columns */
+    protected function actualColumn(array $columns, string $expected): ?string
+    {
+        foreach ($columns as $column) {
+            if (strcasecmp($column, $expected) === 0) {
+                return $column;
+            }
+        }
+
+        return null;
     }
 
     protected function databasePath(string $path): string

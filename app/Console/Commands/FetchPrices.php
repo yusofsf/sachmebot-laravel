@@ -58,7 +58,7 @@ class FetchPrices extends Command
             'gold_bahar_buy' => $gold['bahar_buy'],
             'gold_nim' => $gold['nim_sell'],
             'gold_nim_buy' => $gold['nim_buy'],
-            'gold_rob' => $gold['rob_sel'],
+            'gold_rob' => $gold['rob_sell'],
             'gold_rob_buy' => $gold['rob_buy'],
             'gold_mithqal' => $gold['mithqal_sell'],
             'gold_mithqal_buy' => $gold['mithqal_buy'],
