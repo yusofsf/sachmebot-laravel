@@ -7,6 +7,10 @@ use Illuminate\Support\Carbon;
 
 class GoldPriceService
 {
+    private const TROY_OUNCE_GRAMS = 31.1034768;
+
+    private const GOLD_18K_PURITY = 0.75;
+
     /** ستون‌هایی که وجودشان جدول قیمت طلا را مشخص می‌کند. */
     private const REQUIRED_COLUMNS = [
         'bahar_sell', 'bahar_buy',
@@ -200,6 +204,81 @@ class GoldPriceService
 
             return null;
         }
+    }
+
+    /**
+     * حباب هر گرم طلای ۱۸ عیار بر اساس قیمت فروش بازار.
+     *
+     * @return array{intrinsic:float,bubble:float,percent:float}|null
+     */
+    public static function calculate18kBubble(
+        int|float|null $marketGram18k,
+        int|float|null $ounceUsd,
+        int|float|null $dollarToman
+    ): ?array {
+        if ($marketGram18k === null || $ounceUsd === null || $dollarToman === null) {
+            return null;
+        }
+
+        $marketGram18k = (float) $marketGram18k;
+        $intrinsic = self::intrinsic18kGram($ounceUsd, $dollarToman);
+        if ($marketGram18k <= 0 || $intrinsic === null) {
+            return null;
+        }
+
+        $bubble = $marketGram18k - $intrinsic;
+
+        return [
+            'intrinsic' => $intrinsic,
+            'bubble' => $bubble,
+            'percent' => ($bubble / $intrinsic) * 100,
+        ];
+    }
+
+    /**
+     * حباب یک مثقال طلای ۱۸ عیار؛ هر مثقال مطابق محاسبات پروژه ۱÷۰٫۲۱۷ گرم است.
+     *
+     * @return array{intrinsic:float,bubble:float,percent:float}|null
+     */
+    public static function calculate18kMithqalBubble(
+        int|float|null $marketMithqal18k,
+        int|float|null $ounceUsd,
+        int|float|null $dollarToman
+    ): ?array {
+        if ($marketMithqal18k === null || (float) $marketMithqal18k <= 0) {
+            return null;
+        }
+
+        $intrinsicGram = self::intrinsic18kGram($ounceUsd, $dollarToman);
+        if ($intrinsicGram === null) {
+            return null;
+        }
+
+        $intrinsic = $intrinsicGram / 0.217;
+        $bubble = (float) $marketMithqal18k - $intrinsic;
+
+        return [
+            'intrinsic' => $intrinsic,
+            'bubble' => $bubble,
+            'percent' => ($bubble / $intrinsic) * 100,
+        ];
+    }
+
+    protected static function intrinsic18kGram(
+        int|float|null $ounceUsd,
+        int|float|null $dollarToman
+    ): ?float {
+        if ($ounceUsd === null || $dollarToman === null) {
+            return null;
+        }
+
+        $ounceUsd = (float) $ounceUsd;
+        $dollarToman = (float) $dollarToman;
+        if ($ounceUsd <= 0 || $dollarToman <= 0) {
+            return null;
+        }
+
+        return ($ounceUsd * $dollarToman / self::TROY_OUNCE_GRAMS) * self::GOLD_18K_PURITY;
     }
 
     protected function findPriceTable(\PDO $pdo): ?string
