@@ -7,9 +7,10 @@ Schedule::command('bot:warmup')
     ->withoutOverlapping(2)
     ->when(fn () => (bool) config('telegram.warmup_enabled', true));
 
-// معادل کرون‌های پایتون. زمان‌بندی بر اساس APP_TIMEZONE (Asia/Tehran).
+// هر دقیقه قیمت‌ها را مقایسه می‌کند؛ فقط هنگام تغییر یکی از اقلام اصلی پیام می‌فرستد.
 Schedule::command('bot:fetch-prices')
-    ->everyFiveMinutes()
+    ->everyMinute()
+    ->withoutOverlapping(2)
     ->between('10:00', '20:00');
 
 Schedule::command('bot:send-daily')

@@ -22,6 +22,8 @@ class SilverService
 
     private const BAR_UNAVAILABLE = '__unavailable__';
 
+    private const LAST_SENT_PRICES_KEY = 'last_sent_tracked_prices';
+
     public static function isBotActive(): bool
     {
         return (bool) Cache::rememberForever(
@@ -101,6 +103,50 @@ class SilverService
     public static function getLastRecordFull(): ?SilverPrice
     {
         return SilverPrice::orderByDesc('id')->first();
+    }
+
+    /** آخرین مقادیری که پیام آن‌ها با موفقیت به کانال ارسال شده است. */
+    public static function getLastSentTrackedPrices(): ?array
+    {
+        $value = BotSetting::find(self::LAST_SENT_PRICES_KEY)?->value;
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    public static function saveLastSentTrackedPrices(array $prices): void
+    {
+        BotSetting::updateOrCreate(
+            ['key' => self::LAST_SENT_PRICES_KEY],
+            ['value' => json_encode($prices, JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION)]
+        );
+    }
+
+    public static function trackedPricesChanged(array $current, ?array $previous): bool
+    {
+        if ($previous === null || array_keys($current) !== array_keys($previous)) {
+            return true;
+        }
+
+        foreach ($current as $key => $value) {
+            if ($value === null || ($previous[$key] ?? null) === null) {
+                if ($value !== ($previous[$key] ?? null)) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if ((float) $value !== (float) $previous[$key]) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** فرمت عدد با جداکننده‌ی هزارگان به‌صورت "/" (مثل پایتون) */

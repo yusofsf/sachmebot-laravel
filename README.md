@@ -5,6 +5,7 @@
 
 ادمین قیمت گرم نقره را وارد می‌کند؛ ربات مثقال، حباب و قیمت خرید را حساب کرده،
 در SQLite ذخیره و به کانال ارسال می‌کند. ارز/انس از منابع آنلاین گرفته می‌شود.
+قیمت سکه و طلای ۱۸ عیار نیز مستقیماً از دیتابیس SQLite سایت خوانده می‌شود.
 
 ---
 
@@ -17,7 +18,7 @@
 | توابع `fetch_*` | `app/Services/PriceFetcher.php` | تتر (Nobitex)، دلار/درهم/یورو (alanchand)، انس (Yahoo) |
 | `build_message` / `build_daily_report` | `app/Services/MessageBuilder.php` | متن پیام کانال و گزارش روزانه |
 | `python-telegram-bot` | `app/Services/TelegramClient.php` | فراخوانی Bot API با Http |
-| `fetch-prices.py` | `php artisan bot:fetch-prices` | کرون به‌روزرسانی قیمت |
+| `fetch-prices.py` | `php artisan bot:fetch-prices` | پایش یک‌دقیقه‌ای و ارسال فقط هنگام تغییر قیمت‌های اصلی |
 | `send-daily.py` | `php artisan bot:send-daily` | کرون گزارش روزانه |
 | جداول SQLite | `database/migrations/*` | `silver_prices`، `bot_settings`، `bar_status` |
 | `context.user_data` | Laravel **Cache** (کلید `tg:state:{userId}`) | نگه‌داری state گفت‌وگوی ادمین |
@@ -72,7 +73,7 @@ php artisan bot:send-daily
    ```cron
    * * * * * cd /path/to/shachme-laravel && php artisan schedule:run >> /dev/null 2>&1
    ```
-   بقیه‌ی زمان‌بندی (`bot:fetch-prices` هر ۵ دقیقه ۱۰–۲۰، `bot:send-daily` ساعت ۲۰:۰۵)
+   بقیه‌ی زمان‌بندی (`bot:fetch-prices` هر دقیقه ۱۰–۲۰، `bot:send-daily` ساعت ۲۰:۰۵)
    داخل `routes/console.php` تعریف شده است.
 
 ### روی cPanel (Passenger/Apache)
@@ -81,7 +82,7 @@ php artisan bot:send-daily
 - اگر SSH نداری، `vendor/` را محلی بساز و کامل آپلود کن.
 - برای کرون می‌توانی به‌جای `schedule:run` مستقیماً دستورها را زمان‌بندی کنی:
   ```
-  */5 10-19 * * * cd /home/USER/shachme-laravel && php artisan bot:fetch-prices
+  * 10-19 * * *   cd /home/USER/shachme-laravel && php artisan bot:fetch-prices
   5 20 * * *      cd /home/USER/shachme-laravel && php artisan bot:send-daily
   ```
 
@@ -95,6 +96,13 @@ php artisan bot:send-daily
 | `TELEGRAM_CHANNEL` | کانال مقصد (پیش‌فرض `@sachme_kaf`) |
 | `TELEGRAM_ADMINS` | آیدی عددی ادمین‌ها با کاما (پیش‌فرض `271469412`) |
 | `APP_TIMEZONE` | باید `Asia/Tehran` باشد تا بازه‌ی کاری و گزارش درست باشد |
+| `GOLD_DATABASE_PATH` | مسیر دیتابیس SQLite سایت طلا؛ پیش‌فرض `/home/metalspi/talaborad-laravel/database/database.sql` |
+| `GOLD_PRICE_TABLE` | اختیاری؛ نام جدول قیمت. اگر خالی باشد از روی ستون‌ها تشخیص داده می‌شود |
+
+پیام کانال فقط با تغییر یکی از این قیمت‌ها ارسال می‌شود: گرم یا مثقال نقره 995 و
+999/9، یا قیمت خرید/فروش سکه تمام، نیم‌سکه، ربع‌سکه، مثقال طلا و گرم طلای ۱۸ عیار.
+قیمت‌های خرید طلا از ستون‌های متناظر دیتابیس سایت نمایش داده می‌شوند. تغییر انس طلا،
+ارزها یا انس نقره به‌تنهایی باعث ارسال پیام نمی‌شود.
 
 ## فرمول‌ها (بدون تغییر نسبت به پایتون)
 - `مثقال = گرم / 0.217`
