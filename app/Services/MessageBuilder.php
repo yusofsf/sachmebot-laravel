@@ -32,6 +32,13 @@ class MessageBuilder
 
         // {$RTL}🟢 خرید: <b>{$f($d['gram_995_buy'])}</b> تومان
         // {$RTL}🟢 خرید: <b>{$f($d['mithqal_995_price_buy'])}</b> تومان
+        // {$RTL}🟢 خرید: <b>{$f($d['gram_price_buy'])}</b> تومان
+        // {$RTL}🟢 خرید: <b>{$f($d['mithqal_price_buy'])}</b> تومان
+        // {$RTL}🟢 خرید: <b>{$f($gold['bahar_buy'])}</b> تومان
+        // {$RTL}🟢 خرید: <b>{$f($gold['nim_buy'])}</b> تومان
+        // {$RTL}🟢 خرید: <b>{$f($gold['rob_buy'])}</b> تومان
+        // {$RTL}🟢 خرید: <b>{$f($gold['mithqal_buy'])}</b> تومان
+        // {$RTL}🟢 خرید: <b>{$f($gold['geram_buy'])}</b> توم
         $silver995 = '';
         if (! empty($d['gram_995'])) {
             $silver995 = <<<TXT
@@ -48,44 +55,52 @@ TXT;
         $silverOunce = number_format((float) $d['silver_price'], 2, '.', '');
         $gold = $d['gold'];
         $goldOunce = number_format((float) $gold['ounce'], 2, '.', '');
+        $goldGramBubble = GoldPriceService::calculate18kBubble(
+            $gold['geram_sell'],
+            $gold['ounce'],
+            $d['dollar_price']
+        );
+        $goldMithqalBubble = GoldPriceService::calculate18kMithqalBubble(
+            $gold['mithqal_sell'],
+            $gold['ounce'],
+            $d['dollar_price']
+        );
+        $liveGoldBubbleSection = self::buildLiveGoldBubbleSection(
+            $goldMithqalBubble,
+            $goldGramBubble,
+            $f
+        );
         $date = Jalalian::now()->format('Y/m/d');
 
         // {$RTL}🟢 خرید: <b>{$f($d['gram_price_buy'])}</b> تومان
         // {$RTL}🟢 خرید: <b>{$f($d['mithqal_price_buy'])}</b> تومان
         $text = <<<TXT
 
-{$RTL}🪙 <b>سکه تمام</b>
+{$RTL}🥇 <b>سکه تمام</b>
 {$RTL}🔴 فروش: <b>{$f($gold['bahar_sell'])}</b> تومان
-{$RTL}🟢 خرید: <b>{$f($gold['bahar_buy'])}</b> تومان
 
-{$RTL}🪙 <b>نیم سکه</b>
+{$RTL}🥇 <b>نیم سکه</b>
 {$RTL}🔴 فروش: <b>{$f($gold['nim_sell'])}</b> تومان
-{$RTL}🟢 خرید: <b>{$f($gold['nim_buy'])}</b> تومان
 
-{$RTL}🪙 <b>ربع سکه</b>
+{$RTL}🥇 <b>ربع سکه</b>
 {$RTL}🔴 فروش: <b>{$f($gold['rob_sell'])}</b> تومان
-{$RTL}🟢 خرید: <b>{$f($gold['rob_buy'])}</b> تومان
 
 {$RTL}🥇 <b>مثقال طلا 18 عیار (750)</b>
 {$RTL}🔴 فروش: <b>{$f($gold['mithqal_sell'])}</b> تومان
-{$RTL}🟢 خرید: <b>{$f($gold['mithqal_buy'])}</b> تومان
 
-{$RTL}⚖️ <b>گرم طلا 18 عیار (750)</b>
+{$RTL}🔱 <b>گرم طلا 18 عیار (750)</b>
 {$RTL}🔴 فروش: <b>{$f($gold['geram_sell'])}</b> تومان
-{$RTL}🟢 خرید: <b>{$f($gold['geram_buy'])}</b> تومان
 
-{$RTL}🌍 <b>انس طلا</b>
-{$RTL}🔴 فروش: <b>{$goldOunce}</b> دلار
+{$RTL}💫 <b>انس طلا</b> : <b>{$goldOunce}</b> دلار
 
+{$liveGoldBubbleSection}
 {$RTL}⚖️ <b>گرم نقره (عیار 999/9)</b>
 {$RTL}🔴 فروش: <b>{$f($d['gram_price'])}</b> تومان
 
-
 {$RTL}🥈 <b>مثقال نقره (عیار 999/9)</b>
 {$RTL}🔴 فروش: <b>{$f($d['mithqal_price'])}</b> تومان
-
 {$silver995}
-{$RTL}🥇 <b>شمش نقره 999/9</b> : <b>{$bar999Str}</b> تومان
+{$RTL}🥈 <b>شمش نقره 999/9</b> : <b>{$bar999Str}</b> تومان
 {$RTL}🥈 <b>شمش نقره نادیر</b> : <b>{$barNadirStr}</b> تومان
 
 {$RTL}💍 <b>انس نقره</b> : <b>{$silverOunce}</b> دلار
@@ -95,8 +110,8 @@ TXT;
 {$RTL}🇦🇪 <b>درهم</b> : <b>{$f($d['dirham_price'])}</b> تومان
 {$RTL}🇪🇺 <b>یورو</b> : <b>{$f($d['euro_price'])}</b> تومان
 
-{$RTL}{$bubbleMithqalSign} <b>حباب در هر مثقال</b> : <b>{$f($bubbleMithqal)}</b> تومان
-{$RTL}{$bubbleGramSign} <b>حباب در هر گرم</b> : <b>{$f($bubbleGram)}</b> تومان
+{$RTL}{$bubbleMithqalSign} <b>حباب در هر مثقال نقره</b> : <b>{$f($bubbleMithqal)}</b> تومان
+{$RTL}{$bubbleGramSign} <b>حباب در هر گرم نقره</b> : <b>{$f($bubbleGram)}</b> تومان
 
 📆 {$date}
 🆔 @sachme_kaf
@@ -147,6 +162,7 @@ TXT;
 
               (SELECT MIN(dollar_price) FROM silver_prices WHERE DATE(timestamp)=DATE('now','localtime')) AS min_dollar,
               (SELECT MAX(dollar_price) FROM silver_prices WHERE DATE(timestamp)=DATE('now','localtime')) AS max_dollar,
+              (SELECT dollar_price FROM silver_prices WHERE DATE(timestamp)=DATE('now','localtime') ORDER BY id DESC LIMIT 1) AS last_dollar,
 
               (SELECT MIN(bar_999_price) FROM silver_prices WHERE DATE(timestamp)=DATE('now','localtime') AND bar_999_price IS NOT NULL) AS min_bar_999,
               (SELECT MAX(bar_999_price) FROM silver_prices WHERE DATE(timestamp)=DATE('now','localtime') AND bar_999_price IS NOT NULL) AS max_bar_999,
@@ -202,7 +218,15 @@ TXT;
             $silver995Section = "\n{$RTL}گرم نقره 995:\n{$RTL}🔺بیشترین : {$f($row->max_gram_995)}\n{$RTL}🔻کمترین   : {$f($row->min_gram_995)}\n\n{$RTL} مثقال نقره 995:\n{$RTL}🔺بیشترین : {$f($row->max_mithqal_995)}\n{$RTL}🔻کمترین   : {$f($row->min_mithqal_995)}\n";
         }
 
-        $goldSection = self::buildGoldDailySection((new GoldPriceService)->dailyStats(), $f);
+        $goldService = new GoldPriceService;
+        $goldStats = $goldService->dailyStats();
+        $goldLatest = $goldStats !== null ? $goldService->latest() : null;
+        $goldSection = self::buildGoldDailySection($goldStats, $f);
+        $goldBubbleSection = self::buildGoldBubbleSection(
+            $goldLatest,
+            isset($row->last_dollar) ? (float) $row->last_dollar : null,
+            $f
+        );
 
         $minOunce = number_format((float) $row->min_ounce, 2, '.', '');
         $maxOunce = number_format((float) $row->max_ounce, 2, '.', '');
@@ -230,6 +254,7 @@ TXT;
 {$RTL}🔴 آخرین معامله : {$f($row->last_gram)}
 {$silver995Section}
 {$goldSection}
+{$goldBubbleSection}
 {$RTL}انس نقره:
 {$RTL}🔺بیشترین           : {$maxOunce}
 {$RTL}🔻کمترین            : {$minOunce}
@@ -308,5 +333,56 @@ TXT;
     protected static function hasCompleteRange(mixed $range): bool
     {
         return is_array($range) && $range['min'] !== null && $range['max'] !== null;
+    }
+
+    protected static function buildGoldBubbleSection(?array $gold, ?float $dollar, callable $f): string
+    {
+        if ($gold === null) {
+            return '';
+        }
+
+        $bubble = GoldPriceService::calculate18kBubble(
+            $gold['geram_sell'] ?? null,
+            $gold['ounce'] ?? null,
+            $dollar
+        );
+        if ($bubble === null) {
+            return '';
+        }
+
+        $RTL = self::RTL;
+        $bubbleSign = $bubble['bubble'] < 0 ? '➖' : '➕';
+        $percentSign = $bubble['percent'] > 0 ? '+' : '';
+        $percent = number_format($bubble['percent'], 2, '.', '');
+
+        return <<<TXT
+
+{$RTL}📊 حباب طلای 18 عیار (750):
+{$RTL}قیمت ذاتی هر گرم: {$f($bubble['intrinsic'])} تومان
+{$RTL}{$bubbleSign} حباب هر گرم: {$f(abs($bubble['bubble']))} تومان
+{$RTL}درصد حباب: {$percentSign}{$percent}٪
+
+TXT;
+    }
+
+    protected static function buildLiveGoldBubbleSection(
+        ?array $mithqalBubble,
+        ?array $gramBubble,
+        callable $f
+    ): string {
+        if ($mithqalBubble === null || $gramBubble === null) {
+            return '';
+        }
+
+        $RTL = self::RTL;
+        $mithqalSign = $mithqalBubble['bubble'] < 0 ? '➖' : '➕';
+        $gramSign = $gramBubble['bubble'] < 0 ? '➖' : '➕';
+
+        return <<<TXT
+{$RTL}📊 <b>حباب طلای 18 عیار</b>
+{$RTL}{$mithqalSign} حباب هر مثقال: <b>{$f(abs($mithqalBubble['bubble']))}</b> تومان
+{$RTL}{$gramSign} حباب هر گرم: <b>{$f(abs($gramBubble['bubble']))}</b> تومان
+
+TXT;
     }
 }
