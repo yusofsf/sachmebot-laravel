@@ -15,7 +15,7 @@
 |--------|---------|-------|
 | `main.py` (Flask routes) | `app/Http/Controllers/TelegramWebhookController.php` | وب‌هوک، `/start`، callbackها، ورود قیمت |
 | `services.py` | `app/Services/SilverService.php` | محاسبه و درج رکورد، تنظیمات، وضعیت شمش |
-| توابع `fetch_*` | `app/Services/PriceFetcher.php` | تتر (Nobitex)، دلار/درهم/یورو (alanchand)، انس (Yahoo) |
+| توابع `fetch_*` | `app/Services/PriceFetcher.php` | تتر (Nobitex)، دلار/درهم/یورو (alanchand)، انس نقره (نرخ فعلی TGJU، سپس Yahoo) |
 | `build_message` / `build_daily_report` | `app/Services/MessageBuilder.php` | متن پیام کانال و گزارش روزانه |
 | `python-telegram-bot` | `app/Services/TelegramClient.php` | فراخوانی Bot API با Http |
 | `fetch-prices.py` | `php artisan bot:fetch-prices` | پایش یک‌دقیقه‌ای و ارسال فقط هنگام تغییر قیمت‌های اصلی |
