@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
  * گرفتن قیمت‌ها از منابع خارجی:
  *  - تتر: Nobitex
  *  - دلار/درهم/یورو: alanchand.com (scrape)
- *  - انس نقره: Yahoo Finance (SI=F)
+ *  - انس نقره: TGJU (نرخ فعلی)، با Yahoo Finance (SI=F) به‌عنوان جایگزین
  */
 class PriceFetcher
 {
@@ -40,14 +40,11 @@ class PriceFetcher
                     ->withOptions($this->curlOptions())
                     ->timeout(10)
                     ->get('https://apiv2.nobitex.ir/v3/orderbook/USDTIRT'),
-                $pool->as('silver')
+                $pool->as('silver_tgju')
                     ->withOptions($this->curlOptions())
                     ->withHeaders(['User-Agent' => self::USER_AGENT])
                     ->timeout(10)
-                    ->get('https://query2.finance.yahoo.com/v8/finance/chart/SI=F', [
-                        'interval' => '1m',
-                        'range' => '1d',
-                    ]),
+                    ->get('https://www.tgju.org/profile/silver'),
                 $pool->as('alanchand')
                     ->withOptions($this->curlOptions())
                     ->withHeaders(['User-Agent' => self::USER_AGENT])
@@ -70,15 +67,23 @@ class PriceFetcher
                 $this->fetchTgju();
             }
 
+            $silver = $responses['silver_tgju'] instanceof Response
+                ? $this->parseTgjuSilverOunce($responses['silver_tgju'])
+                : null;
+
+            // TGJU is the authoritative source requested for silver. Yahoo is
+            // contacted only when TGJU is unavailable or its markup is invalid.
+            if ($silver === null) {
+                $silver = $this->fetchYahooSilverOunce();
+            }
+
             return [
                 'tether' => $responses['tether'] instanceof Response
                     ? $this->parseTether($responses['tether'])
                     : null,
                 'dollar' => $dollar
                     ?? $this->parseTgju(['price_dollar_rl', 'price_dollar_dt']),
-                'silver' => $responses['silver'] instanceof Response
-                    ? $this->parseSilverOunce($responses['silver'])
-                    : null,
+                'silver' => $silver,
                 'dirham' => $dirham
                     ?? $this->parseTgju(['price_aed', 'PRICE_AED']),
                 'euro' => $euro
@@ -128,24 +133,25 @@ class PriceFetcher
         return $this->alanchand('یورو');
     }
 
-    /** انس نقره به دلار از Yahoo Finance (با اصلاح ۱.۰۰۱) */
+    /** انس نقره به دلار؛ ابتدا «نرخ فعلی» TGJU و سپس Yahoo Finance. */
     public function silverOunce(): ?float
     {
         try {
             $response = Http::withOptions($this->curlOptions())
                 ->withHeaders(['User-Agent' => self::USER_AGENT])
                 ->timeout(10)
-                ->get('https://query2.finance.yahoo.com/v8/finance/chart/SI=F', [
-                    'interval' => '1m',
-                    'range' => '1d',
-                ]);
+                ->get('https://www.tgju.org/profile/silver');
 
-            return $this->parseSilverOunce($response);
+            $price = $this->parseTgjuSilverOunce($response);
+
+            if ($price !== null) {
+                return $price;
+            }
         } catch (\Throwable $e) {
-            Log::error('silver ounce fetch failed: '.$e->getMessage());
+            Log::warning('TGJU silver ounce fetch failed: '.$e->getMessage());
         }
 
-        return null;
+        return $this->fetchYahooSilverOunce();
     }
 
     /** قیمت فروش یک ردیف از جدول alanchand بر اساس کلیدواژه‌ی ستون اول */
@@ -191,6 +197,93 @@ class PriceFetcher
         return isset($meta['regularMarketPrice'])
             ? (float) $meta['regularMarketPrice'] * 1.001
             : null;
+    }
+
+    /** مقدار «نرخ فعلی» صفحه‌ی پروفایل انس نقره‌ی TGJU. */
+    protected function parseTgjuSilverOunce(Response $response): ?float
+    {
+        if (! $response->successful()) {
+            return null;
+        }
+
+        return $this->parseTgjuSilverHtml($response->body());
+    }
+
+    protected function parseTgjuSilverHtml(string $html): ?float
+    {
+        if (trim($html) === '') {
+            return null;
+        }
+
+        $doc = new \DOMDocument;
+        libxml_use_internal_errors(true);
+        $loaded = $doc->loadHTML('<?xml encoding="utf-8" ?>'.$html);
+        libxml_clear_errors();
+
+        if (! $loaded) {
+            return null;
+        }
+
+        $xpath = new \DOMXPath($doc);
+
+        // TGJU marks the displayed current rate with this stable data field.
+        foreach ($xpath->query('//*[@data-col="info.last_trade.PDrCotVal"]') as $node) {
+            $price = $this->parseDecimal($node->textContent);
+
+            if ($price !== null) {
+                return $price;
+            }
+        }
+
+        // Keep a label-based fallback for harmless markup changes on the page.
+        foreach ($xpath->query('//tr[.//*[contains(normalize-space(.), "نرخ فعلی")]]') as $row) {
+            $cells = $xpath->query('./th|./td', $row);
+
+            for ($i = $cells->length - 1; $i >= 0; $i--) {
+                $price = $this->parseDecimal($cells->item($i)->textContent);
+
+                if ($price !== null) {
+                    return $price;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** Yahoo fallback؛ ضریب اصلاح قبلی حفظ شده است. */
+    protected function fetchYahooSilverOunce(): ?float
+    {
+        try {
+            $response = Http::withOptions($this->curlOptions())
+                ->withHeaders(['User-Agent' => self::USER_AGENT])
+                ->timeout(10)
+                ->get('https://query2.finance.yahoo.com/v8/finance/chart/SI=F', [
+                    'interval' => '1m',
+                    'range' => '1d',
+                ]);
+
+            return $this->parseSilverOunce($response);
+        } catch (\Throwable $e) {
+            Log::error('Yahoo silver ounce fallback failed: '.$e->getMessage());
+        }
+
+        return null;
+    }
+
+    protected function parseDecimal(string $value): ?float
+    {
+        $value = $this->normalizeDigits(trim($value));
+        $value = str_replace('٫', '.', $value);
+        $value = str_replace([',', '،', '٬', ' ', "\u{00a0}", "\u{200f}", "\u{200e}"], '', $value);
+
+        if (! preg_match('/-?\d+(?:\.\d+)?/', $value, $match)) {
+            return null;
+        }
+
+        $price = (float) $match[0];
+
+        return $price > 0 ? $price : null;
     }
 
     protected function parseAlanchand(string $keyword): ?float
