@@ -312,7 +312,15 @@ class GoldPriceService
 
     protected function hasRequiredColumns(\PDO $pdo, string $table): bool
     {
-        return count($this->resolveColumnMap($this->tableColumns($pdo, $table))) === count(self::REQUIRED_COLUMNS);
+        $resolved = $this->resolveColumnMap($this->tableColumns($pdo, $table));
+
+        foreach (self::REQUIRED_COLUMNS as $column) {
+            if (! isset($resolved[$column])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
