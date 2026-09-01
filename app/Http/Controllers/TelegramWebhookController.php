@@ -445,7 +445,7 @@ class TelegramWebhookController extends Controller
         $gold = (new GoldPriceService)->latest();
         $tether = $prices['tether'];
         $dollar = $prices['dollar'];
-        $silver = $gold['silver_ounce'] ?? null;
+        $silver = $gold['silver_ounce'] ?? (new PriceFetcher)->silverOunce();
         $dirham = $prices['dirham'];
         $euro = $prices['euro'];
 

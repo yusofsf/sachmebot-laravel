@@ -85,7 +85,9 @@ class FetchPrices extends Command
         $prices = (new PriceFetcher)->fetchAll();
         $tether = $prices['tether'] ?? $last->tether_price;
         $dollar = $prices['dollar'] ?? $last->dollar_price;
-        $silver = $gold['silver_ounce'] ?? $last->silver_ounce;
+        $silver = $gold['silver_ounce']
+            ?? (new PriceFetcher)->silverOunce()
+            ?? $last->silver_ounce;
         $dirham = $prices['dirham'] ?? $last->dirham_price;
         $euro = $prices['euro'] ?? $last->euro_price;
 

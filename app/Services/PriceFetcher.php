@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Services\GoldPriceService;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -119,10 +118,24 @@ class PriceFetcher
         return $this->alanchand('یورو');
     }
 
-    /** انس نقره از آخرین رکورد دیتابیس talaborad. */
+    /** انس نقره به‌عنوان fallback؛ منبع اصلی در GoldPriceService دیتابیس talaborad است. */
     public function silverOunce(): ?float
     {
-        return (new GoldPriceService)->latest()['silver_ounce'] ?? null;
+        try {
+            $response = Http::withOptions($this->curlOptions())
+                ->withHeaders(['User-Agent' => self::USER_AGENT])
+                ->timeout(10)
+                ->get('https://www.tgju.org/profile/silver');
+
+            $price = $this->parseTgjuSilverOunce($response);
+            if ($price !== null) {
+                return $price;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('TGJU silver ounce fallback failed: '.$e->getMessage());
+        }
+
+        return $this->fetchYahooSilverOunce();
     }
 
     /** قیمت فروش یک ردیف از جدول alanchand بر اساس کلیدواژه‌ی ستون اول */
