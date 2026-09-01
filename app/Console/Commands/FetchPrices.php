@@ -85,7 +85,7 @@ class FetchPrices extends Command
         $prices = (new PriceFetcher)->fetchAll();
         $tether = $prices['tether'] ?? $last->tether_price;
         $dollar = $prices['dollar'] ?? $last->dollar_price;
-        $silver = $prices['silver'] ?? $last->silver_ounce;
+        $silver = $gold['silver_ounce'] ?? $last->silver_ounce;
         $dirham = $prices['dirham'] ?? $last->dirham_price;
         $euro = $prices['euro'] ?? $last->euro_price;
 
@@ -94,8 +94,6 @@ class FetchPrices extends Command
 
             return self::SUCCESS;
         }
-
-        (new GoldPriceService)->updateLatestSilverOunce((float) $silver);
 
         $bar999 = SilverService::getBarPrice('bar_999');
         $barNadir = SilverService::getBarPrice('bar_nadir');

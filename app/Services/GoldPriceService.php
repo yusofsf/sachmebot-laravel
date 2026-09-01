@@ -34,6 +34,7 @@ class GoldPriceService
         'geram_sell' => ['geram_sell', 'gram_sell'],
         'geram_buy' => ['geram_buy', 'gram_buy'],
         'ounce' => ['ounce', 'ounce_sell', 'ons', 'ons_sell'],
+        'silver_ounce' => ['silver_ounce'],
     ];
 
     /**
@@ -72,13 +73,17 @@ class GoldPriceService
             $columns = $this->tableColumns($pdo, $table);
             $columnMap = $this->resolveColumnMap($columns);
             $order = $this->latestOrder($columns);
+            $selectedColumns = self::REQUIRED_COLUMNS;
+            if (isset($columnMap['silver_ounce'])) {
+                $selectedColumns[] = 'silver_ounce';
+            }
             $quotedColumns = implode(', ', array_map(
                 fn (string $canonical): string => sprintf(
                     '%s AS %s',
                     $this->quoteIdentifier($columnMap[$canonical]),
                     $this->quoteIdentifier($canonical)
                 ),
-                self::REQUIRED_COLUMNS
+                $selectedColumns
             ));
             $sql = sprintf(
                 'SELECT %s FROM %s ORDER BY %s DESC LIMIT 1',
@@ -105,6 +110,10 @@ class GoldPriceService
                 $result[$column] = $value;
             }
 
+            $result['silver_ounce'] = isset($columnMap['silver_ounce'])
+                ? $this->numericValue($row['silver_ounce'] ?? null)
+                : null;
+
             return $result;
         } catch (\Throwable $e) {
             BotLog::warning('خواندن دیتابیس قیمت طلای سایت ناموفق بود', [
@@ -114,69 +123,6 @@ class GoldPriceService
             ]);
 
             return null;
-        }
-    }
-
-    /**
-     * مقدار انس نقره را روی آخرین رکورد دیتابیس talaborad ذخیره می‌کند.
-     * این ستون باید با migration در جدول gold_prices ایجاد شده باشد.
-     */
-    public function updateLatestSilverOunce(float $silverOunce): bool
-    {
-        if ($silverOunce <= 0) {
-            return false;
-        }
-
-        $path = $this->databasePath((string) config('prices.gold_database_path'));
-        if ($path === '' || ! is_file($path) || ! is_readable($path) || ! is_writable($path)) {
-            BotLog::warning('دیتابیس talaborad برای ذخیره انس نقره قابل نوشتن نیست', [
-                'path' => $path,
-            ]);
-
-            return false;
-        }
-
-        try {
-            $pdo = new \PDO('sqlite:'.$path, null, null, [
-                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-            ]);
-            $pdo->exec('PRAGMA busy_timeout = 3000');
-
-            $table = $this->findPriceTable($pdo);
-            if ($table === null) {
-                return false;
-            }
-
-            $columns = $this->tableColumns($pdo, $table);
-            $silverColumn = $this->actualColumn($columns, 'silver_ounce');
-            if ($silverColumn === null) {
-                BotLog::warning('ستون silver_ounce در جدول قیمت talaborad وجود ندارد', [
-                    'table' => $table,
-                ]);
-
-                return false;
-            }
-
-            $order = $this->latestOrder($columns);
-            $sql = sprintf(
-                'UPDATE %s SET %s = :silver WHERE rowid = (SELECT rowid FROM %s ORDER BY %s DESC LIMIT 1)',
-                $this->quoteIdentifier($table),
-                $this->quoteIdentifier($silverColumn),
-                $this->quoteIdentifier($table),
-                $order
-            );
-            $statement = $pdo->prepare($sql);
-            $statement->execute(['silver' => $silverOunce]);
-
-            return $statement->rowCount() > 0;
-        } catch (\Throwable $e) {
-            BotLog::warning('ذخیره انس نقره در دیتابیس talaborad ناموفق بود', [
-                'path' => $path,
-                'error' => $e->getMessage(),
-                'exception' => $e::class,
-            ]);
-
-            return false;
         }
     }
 

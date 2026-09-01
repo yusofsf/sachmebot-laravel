@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Services\GoldPriceService;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Log;
  * گرفتن قیمت‌ها از منابع خارجی:
  *  - تتر: Nobitex
  *  - دلار/درهم/یورو: alanchand.com (scrape)
- *  - انس نقره: TGJU (نرخ فعلی)، با Yahoo Finance (SI=F) به‌عنوان جایگزین
+ *  - انس نقره: از دیتابیس talaborad خوانده می‌شود (در GoldPriceService)
  */
 class PriceFetcher
 {
@@ -40,11 +41,6 @@ class PriceFetcher
                     ->withOptions($this->curlOptions())
                     ->timeout(10)
                     ->get('https://apiv2.nobitex.ir/v3/orderbook/USDTIRT'),
-                $pool->as('silver_tgju')
-                    ->withOptions($this->curlOptions())
-                    ->withHeaders(['User-Agent' => self::USER_AGENT])
-                    ->timeout(10)
-                    ->get('https://www.tgju.org/profile/silver'),
                 $pool->as('alanchand')
                     ->withOptions($this->curlOptions())
                     ->withHeaders(['User-Agent' => self::USER_AGENT])
@@ -67,23 +63,13 @@ class PriceFetcher
                 $this->fetchTgju();
             }
 
-            $silver = $responses['silver_tgju'] instanceof Response
-                ? $this->parseTgjuSilverOunce($responses['silver_tgju'])
-                : null;
-
-            // TGJU is the authoritative source requested for silver. Yahoo is
-            // contacted only when TGJU is unavailable or its markup is invalid.
-            if ($silver === null) {
-                $silver = $this->fetchYahooSilverOunce();
-            }
-
             return [
                 'tether' => $responses['tether'] instanceof Response
                     ? $this->parseTether($responses['tether'])
                     : null,
                 'dollar' => $dollar
                     ?? $this->parseTgju(['price_dollar_rl', 'price_dollar_dt']),
-                'silver' => $silver,
+                'silver' => null,
                 'dirham' => $dirham
                     ?? $this->parseTgju(['price_aed', 'PRICE_AED']),
                 'euro' => $euro
@@ -133,25 +119,10 @@ class PriceFetcher
         return $this->alanchand('یورو');
     }
 
-    /** انس نقره به دلار؛ ابتدا «نرخ فعلی» TGJU و سپس Yahoo Finance. */
+    /** انس نقره از آخرین رکورد دیتابیس talaborad. */
     public function silverOunce(): ?float
     {
-        try {
-            $response = Http::withOptions($this->curlOptions())
-                ->withHeaders(['User-Agent' => self::USER_AGENT])
-                ->timeout(10)
-                ->get('https://www.tgju.org/profile/silver');
-
-            $price = $this->parseTgjuSilverOunce($response);
-
-            if ($price !== null) {
-                return $price;
-            }
-        } catch (\Throwable $e) {
-            Log::warning('TGJU silver ounce fetch failed: '.$e->getMessage());
-        }
-
-        return $this->fetchYahooSilverOunce();
+        return (new GoldPriceService)->latest()['silver_ounce'] ?? null;
     }
 
     /** قیمت فروش یک ردیف از جدول alanchand بر اساس کلیدواژه‌ی ستون اول */

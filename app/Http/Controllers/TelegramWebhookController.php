@@ -442,9 +442,10 @@ class TelegramWebhookController extends Controller
     {
         $fetcher = new PriceFetcher;
         $prices = $fetcher->fetchAll();
+        $gold = (new GoldPriceService)->latest();
         $tether = $prices['tether'];
         $dollar = $prices['dollar'];
-        $silver = $prices['silver'];
+        $silver = $gold['silver_ounce'] ?? null;
         $dirham = $prices['dirham'];
         $euro = $prices['euro'];
 
@@ -453,8 +454,6 @@ class TelegramWebhookController extends Controller
 
             return;
         }
-
-        (new GoldPriceService)->updateLatestSilverOunce((float) $silver);
 
         $bar999 = SilverService::getBarPrice('bar_999');
         $barNadir = SilverService::getBarPrice('bar_nadir');
