@@ -29,9 +29,7 @@ class TestFetch extends Command
         $this->info(PHP_EOL.'== دسترسی خام شبکه ==');
         $this->probe('Nobitex', 'https://apiv2.nobitex.ir/v3/orderbook/USDTIRT');
         $this->probe('alanchand', 'https://alanchand.com/');
-        $this->probe('Yahoo', 'https://query2.finance.yahoo.com/v8/finance/chart/SI=F?interval=1m&range=1d');
         $this->probe('TGJU api', 'https://api.tgju.org/v1/data/sana/json');
-        $this->probe('TGJU silver', 'https://www.tgju.org/profile/silver');
 
         return self::SUCCESS;
     }
