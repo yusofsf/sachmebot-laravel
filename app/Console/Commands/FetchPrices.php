@@ -95,6 +95,8 @@ class FetchPrices extends Command
             return self::SUCCESS;
         }
 
+        (new GoldPriceService)->updateLatestSilverOunce((float) $silver);
+
         $bar999 = SilverService::getBarPrice('bar_999');
         $barNadir = SilverService::getBarPrice('bar_nadir');
         $r = SilverService::insertRecord(

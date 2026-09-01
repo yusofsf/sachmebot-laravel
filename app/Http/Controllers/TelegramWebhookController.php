@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\PriceFetcher;
+use App\Services\GoldPriceService;
 use App\Services\SilverService;
 use App\Services\TelegramClient;
 use App\Support\BotLog;
@@ -452,6 +453,8 @@ class TelegramWebhookController extends Controller
 
             return;
         }
+
+        (new GoldPriceService)->updateLatestSilverOunce((float) $silver);
 
         $bar999 = SilverService::getBarPrice('bar_999');
         $barNadir = SilverService::getBarPrice('bar_nadir');
